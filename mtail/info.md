@@ -10,6 +10,112 @@ mtail是用来从应用日志提取数据，并上报给时间序列数据库，
 
 
 
+## 执行
+
+对接收的每一行日志，运行所有的程序，每个程序运行一次：
+```pseudocode
+for line in lines:
+  for regex in regexes:
+    if match:
+      do something
+```
+
+
+
+## mtail程序结构
+
+exported variable、pattern-action声明、optional decorator定义
+
+```
+exported variable
+
+pattern {
+  action statements
+}
+
+def decorator {
+  pattern and action statements
+}
+```
+
+
+
+### exported variable
+
+上报的变量在这里定义：
+
+* counter和gauge是type
+
+  ```
+  counter lines_total
+  gauge queue_length
+  ```
+
+* as可以定义上报的变量名：as
+
+  ```pseudocode
+  counter lines_total as "line-count"
+  ```
+
+* 把变量变成多维数组：by
+
+  ```pseudocode
+  counter bytes by operation, direction
+  counter latency_ms by bucket
+  ```
+
+* 定义不需要上报的变量，用于存储中间信息：hidden
+
+  这是在处理不同行的时候，共享数据的唯一方法
+
+  ```pseudocode
+  hidden counter login_failures
+  ```
+
+
+
+### pattern-action声明
+
+条件，以及对应的行为：
+
+```
+COND {
+	ACTION
+}
+```
+
+`COND`可以是正则表达式、条件表达式，以及两者的结合：
+
+```pseudocode
+/foo/ {
+	ACTION1
+}
+/foo/ && var > 0 {
+	ACTION2
+}
+```
+
+正则表示式可以被声明为`const`，从而重复使用：
+```
+const PREFIX /^\w+\W+\d+ /
+
+PREFIX {
+	ACTION1
+}
+
+PREFIX + /foo/ { # 匹配PREFIX和foo
+	ACTION2
+}
+```
+
+
+
+
+
+
+
+
+
 
 
 
