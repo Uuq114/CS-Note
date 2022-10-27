@@ -108,6 +108,41 @@ PREFIX + /foo/ { # 匹配PREFIX和foo
 }
 ```
 
+mtail支持的运算符：
+
+```
+关系运算符
+< less than
+<= less than or equal
+> greater than
+>= greater than or equal
+== is equal
+!= is not equal
+=~ pattern match
+!~ negated pattern match
+|| logical or
+&& logical and
+! unary logical negation
+
+算术运算符
+| bitwise or
+& bitwise and
+^ bitwise xor
++ addition
+- subtraction
+* multiplication
+/ division
+<< bitwise shift left
+>> bitwise shift right
+** exponent
+
+用在exported variable上的运算符
+= assignment
+++ increment
++= increment by
+-- decrement
+```
+
 
 
 
