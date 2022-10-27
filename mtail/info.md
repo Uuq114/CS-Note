@@ -46,6 +46,12 @@ def decorator {
 
 * counter和gauge是type
 
+  counter：适用于单调递增的变量，用于计数类，例如传输的字节数
+
+  gauge：任何时候都可以随便赋值，例如某时刻的queue length
+
+  histogram：记录event在某个dimension下的频率，例如latency，只能识别float
+
   ```
   counter lines_total
   gauge queue_length
@@ -144,6 +150,24 @@ mtail支持的运算符：
 ```
 
 
+
+## mtail内置函数
+
+不会影响state的函数：
+
+```
+int(x)
+float(x)
+string(x)
+strtol(x, y)
+```
+
+会影响state的函数：
+
+```
+getfilename() 获取文件名
+settime() 设置current timestamp register
+```
 
 
 
