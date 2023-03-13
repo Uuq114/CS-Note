@@ -184,3 +184,118 @@ ARP解析过程：
 
 
 
+## 2-1 tcp service model
+
+TCP工作在传输层
+
+![image-20230312214011617](assets/image-20230312214011617.png)
+
+TCP提供了端到端的通信，称为连接。
+
+在连接的两端，TCP使用一个状态机来跟踪连接的状态
+
+![image-20230312214136258](assets/image-20230312214136258.png)
+
+tcp service model:
+
+| property           | behaviour                                                    |
+| ------------------ | ------------------------------------------------------------ |
+| stream of bytes    | reliable byte delivery service                               |
+| reliable delivery  | ack; checksum; sequence number; flow-control (avoid sender sends too fast) |
+| in-sequence        | deliver in sequence                                          |
+| congestion control | control network congestion                                   |
+
+ISN: initial sequence number
+
+
+
+## 2-2 udp service model
+
+UDP数据报结构：
+
+* 发送端口、接收端口
+* length：整个UDP数据报的长度，头部+数据部分
+* checksum：使用ipv4时，checksum是可选的。
+
+![image-20230312220527247](assets/image-20230312220527247.png)
+
+udp service model properties：
+
+| property                        | behaviour                                                    |
+| ------------------------------- | ------------------------------------------------------------ |
+| connectionless datagram service | no connection; packets may show up in any order              |
+| self contained datagrams        |                                                              |
+| unreliable delivery             | no ack; no mechanism to detect missing or mis-sequenced datagrams; no flow control |
+
+
+
+使用UDP的：DNS、DHCP
+
+
+
+## 2-3 icmp service model
+
+ICMP: internet control message protocol
+
+工作在网络层上
+
+两个属性：type和code
+
+icmp service model:
+
+| property          | behaviour                              |
+| ----------------- | -------------------------------------- |
+| reporting message | self-contained message reporting error |
+| unreliable        | simple datagram service -- no retry    |
+
+用例：ping、traceroute
+
+
+
+## 2-4 end to end principle
+
+端到端的文件传输的正确性：
+
+* 网络可以提供帮助，但是不能对正确性负责
+* 要保证端到端的正确性，只能让应用本身负责
+
+例如，D在收到文件之后，保存再内存中的文件发生了比特翻转，D将错误的文件往后面传输了，由于网络只能检测传输中的错误，存储中发生的错误不能被发现
+
+![image-20230312231911347](assets/image-20230312231911347.png)
+
+
+
+## 2-5 error detection
+
+* checksum
+  * pro: fast and cheap
+  * con: not very robust
+* CRC, cyclic redundancy code
+  * pro: stronger guarantee than checksum
+  * con: more expensive than checksum
+* MAC, message authentication code
+  * pro: robust to malicious modifications
+  * con: not robust to errors（和CRC相比）
+
+MAC：
+
+c=MAC(M, s)，c是生成的code，M是消息，s是secret值
+
+链路层一般使用CRC
+
+
+
+## 2-6 finite state machines
+
+FSM of TCP:
+
+![image-20230313154310358](assets/image-20230313154310358.png)
+
+
+
+## 2-7 stop and wait
+
+
+
+
+
