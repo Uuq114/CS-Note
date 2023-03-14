@@ -1,6 +1,7 @@
 [toc]
 
-* all lab code is in: https://github.com/Uuq114/sponge
+* cs144 lab website: https://cs144.github.io/
+* my solution is in: https://github.com/Uuq114/sponge
 
 
 
@@ -56,3 +57,11 @@ sock.close();
 deque模拟的buffer
 
 第9个test，t_socket_dt没过，测试文件是doctests/socket_example_1、2、3
+
+> 我用的wsl，可能和这个有关系，下次用virtualbox跑一遍
+
+
+
+## lab1
+
+要实现一个TCP recver，可以将输入的重复的、无序的`index,data`整理成有序的`data`

@@ -291,9 +291,103 @@ FSM of TCP:
 
 ![image-20230313154310358](assets/image-20230313154310358.png)
 
+左下角的FIN_WAIT1是主动关闭连接的一方在发送了FIN之后进入的状态，它有三种可转移的状态：
+
+* 正常情况，对方还有数据没发完，对方发了ACK，主动关闭方收到ACK之后，变成FIN_WAIT2
+* 连接双方同时想主动关闭连接，对方也发了FIN，这时状态变成CLOSING
+* 对方没有数据要发送了，对方发了FIN+ACK，这时状态变成TIME_WAIT
+
 
 
 ## 2-7 stop and wait
+
+flow control:
+
+* send <= recv
+* two basic approaches: 
+  * stop and wait
+  * sliding window
+
+
+
+stop and wait：
+
+* one packet in flight at most
+* sender sends one packet => recver recvs data and sends ack => sender sends new packet
+* sender resends packet on timeout
+* use 1-bit counter to detect duplication（让sender知道是重新发，还是发送新的包）
+
+
+
+## 2-8 sliding window
+
+sliding window:
+
+* bound on number of un-acked segments, called window
+
+
+
+sender maintain 3 variables:
+
+* send window size (SWS)
+* last ack recved (LAR)
+* last segment sent (LSS)
+
+
+
+
+
+recver maintain:
+
+* recv window size (RWS)
+* last acceptable segment (LAS)
+* last segment recved (LSR)
+
+LAS-lSR<=RWS
+
+累计确认：收到1，2，3，5，需要确认3
+
+ack：TCP ack是希望收到的下一个序号，例如要确认3，ack是4
+
+
+
+## 2-9 reliable communication: retransmission strategy
+
+* go back N，从丢失的包开始，都需要重传
+* selective repeat，只传输丢失的包
+
+
+
+## 2-10 reliable communication: tcp header
+
+tcp header:
+
+<img src="assets/image-20230314171242909.png" alt="image-20230314171242909" style="zoom:50%;" />
+
+checksum: 包括pseudo header、TCP header、TCP data
+
+
+
+## 2-11 reliable communication: tcp setup and teardown
+
+tcp建立连接支持simultaneous open
+
+tcp断开连接支持simultaneous close
+
+![image-20230314175614009](assets/image-20230314175614009.png)
+
+
+
+## 2-12 transport recap
+
+使用UDP的应用程序：
+
+* 应用有自己的私有方式处理重传
+* 应用不需要可靠的交付
+
+
+
+## 3-0 packet switching
 
 
 
