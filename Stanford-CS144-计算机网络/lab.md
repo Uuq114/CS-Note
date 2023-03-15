@@ -5,6 +5,16 @@
 
 
 
+- [x] Lab 0: networking warmup
+- [x] Lab 1: stitching substrings into a byte stream
+- [ ] Lab 2: the TCP receiver
+- [ ] Lab 3: the TCP sender
+- [ ] Lab 4: the TCP connection
+- [ ] Lab 5: the network interface
+- [ ] Lab 6: the IP router
+
+
+
 ## lab0
 
 2.1
@@ -64,4 +74,12 @@ deque模拟的buffer
 
 ## lab1
 
+https://cs144.github.io/assignments/lab1.pdf
+
 要实现一个TCP recver，可以将输入的重复的、无序的`index,data`整理成有序的`data`
+
+
+
+eof:
+
+用户如果在push string的时候指定eof为true，代表该string的最后一个字母是流的结尾。因此使用eof_index存储该位置，当接收到大于eof_index的数据时，将其丢弃。
