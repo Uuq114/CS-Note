@@ -389,6 +389,167 @@ tcp断开连接支持simultaneous close
 
 ## 3-0 packet switching
 
+packet switching，数据包交换
+
+每个数据包都是一个独立的单元，携带了到达目的地所需的信息
+
+
+
+## 3-2 packet switching: principle
+
+* by looking up router's local table, packets are routed individually
+* all packets share the full capacity of network
+* routers don't matintain per-communication state
+
+
+
+## 3-3 packet switching: end-to-end delay, queueing delay
+
+end-to-end delay:端到端延迟
+
+queueing delay:排队延迟
+
+
+
+![image-20230316145604706](assets/image-20230316145604706.png)
+
+上面的$\frac{p}{r_i}$表示发包的延迟，p是整个包的长度，ri是网络发送速率
+
+每个路由器里面有一个缓冲队列，因此端到端的延迟要加上排队延迟：$t=\sum_{i}(\frac{p}{r_i}+\frac{l_i}{c}+Q_{i}(t))$
+
+排队延迟受当时的网络拥挤程度影响，是一个波动的值
+
+
+
+## 3-4 packet switching: playback buffer
+
+playback buffer：播放缓冲区
+
+通过播放缓冲区，可以减少端到端延迟波动的影响
+
+![image-20230316153109509](assets/image-20230316153109509.png)
+
+播放缓冲区在时间上的体现：
+
+![image-20230316152839318](assets/image-20230316152839318.png)
+
+
+
+## 3-5 packet switching: queue models
+
+网络是一组通过链接互连的queue，这些链接承载了来自不同用户的数据包
+
+* 在理解网络传输packet的过程时，可以用简单的deterministic queue model：输入+queue+输出
+* packet更小，数据包的传输过程就可以pipeline，从而减少端到端的延迟
+* statistical multiplexing可以帮助确定缓冲区的合适大小
+
+
+
+## 3-6 packet switching: queue property
+
+ little公式，缓冲队列的平均占用量=接收速率*通过队列的平均延迟
+
+![image-20230317165347961](assets/image-20230317165347961.png)
+
+可以用泊松分布来模拟the arrival of new flows
+
+实际的包到达过程是突发的，并不符合泊松过程，并且突发性会增加排队延迟
+
+
+
+## 3-7 packet switching: practice switching and forwarding
+
+分组交换的过程：
+
+* 查询转发表
+* 改写头部：TTL等
+* 放到转发队列
+
+![image-20230317173815011](assets/image-20230317173815011.png)
+
+交换机中的查询转发表，用哈希表实现：
+
+![image-20230317185236349](assets/image-20230317185236349.png)
+
+
+
+路由器中的查询转发表：最长前缀匹配常见的实现方式是：前缀树、van emde boas tree
+
+
+
+交换机和路由器的查询地址过程不同：
+
+* 交换机：精确匹配，用哈希表储存
+* 路由器：最长前缀匹配，用字典树、van emde boas tree等储存
+
+
+
+## 3-8 packet switching: how a packet switch works
+
+ head of line blocking: 队头阻塞
+
+在输出队列只有一个时，前面的包的阻塞会导致后面的包即使可以被转发，也会被阻塞
+
+![image-20230317203645298](assets/image-20230317203645298.png)
+
+
+
+解决队头阻塞：虚拟的output queue
+
+多个输出队列
+
+![image-20230317203621745](assets/image-20230317203621745.png)
+
+output queue switch的特点：
+
+* work conserving：有数据包进入时，输出线不会空闲
+* maxmized throughput
+* minimized expected delay
+
+
+
+虚拟的输出队列在现实中也有应用：
+路口前面的车道会按照左转、直行、右转划分
+
+
+
+## 3-9 packet switching: guaranteed flow rates
+
+FIFO队列：
+
+* 简单，FIFO
+* 不能区分紧急的流量，对发送量较少的包不友好
+
+紧急队列和普通队列分开：
+
+* 紧急队列有消息时，为其服务
+* 可能饿死普通队列
+
+多个队列，每个队列有权重：
+
+* 可以优先处理更紧急的数据，而且不会饿死其他数据
+
+
+
+## 3-11 packet switching recap
+
+* end-to-end delay, queueing delay
+* playback buffer used in streaming applications
+* queue model
+* rate guarantee
+* delay guarantee
+* how packets are switched and forwarded
+
+
+
+## 4-0 congestion control
+
+
+
+
+
+
+
 
 
 
