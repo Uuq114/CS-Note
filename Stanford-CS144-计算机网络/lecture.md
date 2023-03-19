@@ -544,6 +544,81 @@ FIFO队列：
 
 ## 4-0 congestion control
 
+流控制：控制发送方的发送速率，避免发送速度大于接收速度的情况
+
+拥塞控制：将流控制的思想扩展到整个网络
+
+
+
+## 4-1 congestion control: basics 1
+
+* 拥塞是网络不可避免的属性，拥塞意味着网络链接的利用率很高
+
+* 拥塞发生在不同的事件范围：两个包的冲突、多个流对连接容量的竞争、高峰期用户拥入网络
+* 数据包被丢弃时，如果立即传输，会让网络更加拥挤
+* 数据包被丢弃时，它们已经浪费了上游的网络资源了
+* 要让多个流共享有限的连接容量，需要定义fairness
+
+max-min fairness:
+
+* def: an allocation is max-min fair if you can not increase the rate of one flow without decreasing the rate of another flow with a lower rate
+
+一个例子：
+
+![image-20230319151432131](assets/image-20230319151432131.png)
+
+## 4-2 congestion control: basic 2
+
+TCP通过end-host observation来实现拥塞控制
+
+* 对在end host观测到的事件做出反应，比如丢包
+* 利用了TCP的滑动窗口
+* 尝试计算网络中可以容纳的数据包的数量 
+
+cwnd：拥塞窗口
+
+AIMD: additive increase, multiplicative decrease，加性增长，乘法减少
+
+加性增长：$w \larr w+\frac{1}{w}$，每收到一个ack，增加1/w，当窗口中的包都被确认了，w=w+1
+
+乘法减少：$w \larr \frac{w}{2}$
+
+
+
+## 4-3 congestion control: dynamics of a single AIMD flow
+
+线性增长、乘法减少：
+
+![image-20230319172048980](assets/image-20230319172048980.png)
+
+窗口大小和RTT是同步变化的
+
+如果网络中的缓冲区足够大（RTT*C），发送速率是恒定的
+
+![image-20230319172357382](assets/image-20230319172357382.png)
+
+## 4-4 AIMD with multiple flows
+
+有多个flow时，每个flow的窗口仍然是锯齿状的变化，但是锯齿的间隔是变化的
+
+同时RTT几乎不变，因为router的缓冲区一直都是满的
+
+![image-20230319185424219](assets/image-20230319185424219.png)
+
+AIMD控制方法下，rate和RTT、包丢失概率p的关系：
+
+<img src="assets/image-20230319191341849.png" alt="image-20230319191341849" style="zoom:50%;" />
+
+AIMD总结：
+
+* AIMD流的吞吐量对丢包概率敏感，对RTT更敏感
+* 多个流的环境下，每个流遵循自己的AIMD规则
+* 多个流的环境下，缓冲区一直都是满的，RTT是一个定值
+
+
+
+## 4-5 TCP Tahoe
+
 
 
 
