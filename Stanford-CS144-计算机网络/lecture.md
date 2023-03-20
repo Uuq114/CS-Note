@@ -619,6 +619,88 @@ AIMD总结：
 
 ## 4-5 TCP Tahoe
 
+三个问题：
+
+* 发送新数据的时机
+* 重传的时机
+* 发送ack的时机
+
+
+
+slow start
+
+* window starts at maxmimum segment size(MSS)
+* for each acked packet, increase window by MSS
+* 开始是指数增长的，被称为slow是因为和之前的方法相比，最开始只发了MSS，而不是整个发送窗口
+
+congestion avoidance
+
+* for each ack, increase window by $\frac{MSS^2}{cwnd}$(increase by MSS each RTT)
+* 线性增长
+
+signal
+
+* increasing acks: 一切正常
+* duplicate acks: 丢包，或者延迟了
+* timeout: 情况很糟
+
+![image-20230320170056708](assets/image-20230320170056708.png)
+
+
+
+## 4-6 TCP RTT estimation
+
+RTT的估计：$r=\alpha r + (1-\alpha)m$，超时时间为$timeout=\beta r$
+
+r是RTT的估计值，m是根据最近几个ack估计的RTT，α是系数
+
+TCP Tahoe的timeout除了考虑了r之外，还考虑了新旧r之间的差
+
+![image-20230320172144749](assets/image-20230320172144749.png)
+
+## 4-7 TCP Reno
+
+和Tahoe相比，在收到重复ack时的行为不同：
+
+* 快恢复：threshold变成cwnd的一半
+* 快重传：立即重传丢失的包
+
+
+
+TCP NewReno
+
+背景：TCP Reno在收到重复ack时会立即重传丢失的包，此时要RTT的时间，丢失的包才能到接收方，带宽是没有被利用的
+
+NewReno做法：在快重传过程中，也发送新的数据包。在收到了丢失的包的ack之后，回到拥塞避免状态，将cwnd设置成合适的值
+
+例子：
+
+发送窗口是16，第一个包丢了，后面的15个包都是重复的ack => 新的窗口大小为：16/2+15=23
+
+
+
+保证充分利用pipe，提高吞吐量的trick：
+
+* 快重传：不要等到超时再重传
+* 增大cwnd：don't wait an RTT before sending more data，不要等到重传的包返回ack之后再开始发新数据
+
+
+
+## 4-9 Reading RFC
+
+
+
+## 4-11 congestion control: recap
+
+* TCP Tahoe, Reno, NewReno
+* congestion window
+* slow start, congestion avoidance
+* RTT estimation
+* self-clocking
+* fast retransmit, fast recovery, CWND inflation
+
+
+
 
 
 
