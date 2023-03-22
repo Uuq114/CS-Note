@@ -135,3 +135,28 @@ uint64_t unwrap(WrappingInt32 n, WrappingInt32 isn, uint64_t checkpoint) {
 > optional:
 >
 > 用来实现多个返回值的
+
+
+
+## lab3
+
+lab3要求实现一个TCPSender，它将字节流转化成TCP segment，发送给recver，如果没有收到ack，重新发送对应的包
+
+TCPSender要写的部分有TCP segment：seqno、SYN、payload、FIN
+
+TCPSender要读的部分是：ackno、window size
+
+tick方法：会返回距离上次调用tick经过的时间，单位是ms
+
+RTO：重传超时时间。这个值会变动，但是初值是确定的
+
+timer：重传的时钟。可以在某个时间开始计时，在RTO到达时过期。在发送一个TCP segment时，要启动一个时钟。
+
+
+
+有一个要注意的：
+
+假设发送方发送的数据占满了接收方的缓冲区，接收方返回了一个ack，同时携带窗口大小为0。这时发送方停止发数据，只会在收到新的ack之后才会发数据，同时接收方又因为是携带确认而不会发送ack，整个系统会死锁。
+
+
+

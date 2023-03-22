@@ -701,11 +701,33 @@ NewReno做法：在快重传过程中，也发送新的数据包。在收到了�
 
 
 
+## 5-1 network address translation(NAT)
+
+在端到端的设计中，网络只负责简单的传输功能，其他复杂的功能都在两边的端点实现
 
 
 
+例子：
+<img src="assets/image-20230322170220095.png" alt="image-20230322170220095" style="zoom:50%;" />
+
+A、B的地址是private & local address
+
+NAT管理了多个`internal ip:port`到`external ip:port`的映射，对应的数据包的地址会被改写
 
 
+
+## 5-2 NAT types
+
+* full cone NAT
+  * 私网的`ip:port`被映射成公网的`ip:port`，只要建立了映射关系，所有internet上的主机都可以访问NAT后面的主机
+* restricted cone NAT
+  * 在内部主机向公网主机发送过报文之后，公网主机才能向私网主机发送报文
+* port restricted cone NAT
+  * 在restricted cone NAT进一步限制了port
+  * 在内部主机向公网主机发送过报文之后，公网主机（ip+port）才能向私网主机发送报文
+* symmetric NAT
+  * 如果同一台主机使用相同的`ip:port`发送报文，但是发送到不同目的地，那么NAT会使用不同的映射
+  * 此外，只有收到数据的公网主机才能向私网主机发送报文
 
 
 
