@@ -160,3 +160,45 @@ timer：重传的时钟。可以在某个时间开始计时，在RTO到达时过
 
 
 
+## lab4
+
+实现一个TCPConnection，将TCPSender和TCPRecver组合起来
+
+TCPConnection相当于连接两端的endpoint，在其内部维护了一个TCPSender和一个TCPRecver
+
+**TCPConnection在接收segment时：**
+
+* 如果flag=RST，关闭连接
+* 将segment转交给TCPRecver
+* 如果flag=ACK，告诉TCPSender：ackno、window size
+* 如果incoming segment使用了序列号，TCPConnection需要回复ack和window size
+* 处理keepalive segment：探活segment的序号是invalid的，需要回复对方current window
+
+**TCPConnection在发送segment时：**
+
+* TCPSender向发送队列添加了segment之后，TCPConnection需要发送这个segment
+* 在发送segment之前，TCPConnection会向TCPRecver询问ackno和window size。如果有ackno，需要设置segment的ack flag。
+
+**随时间变化：**
+
+TCPConnection的tick方法会被OS周期调用，tick调用的时候TCPConnection需要做：
+
+* 告诉TCPSender已经流逝的时间
+* 如果重传次数超过了最大值，向peer发送一个reset segment（RST flag，空内容）
+* 可能需要关闭连接
+
+**连接关闭：**
+
+* 非正常的关闭：通过RST，此时TCPConnection的ByteStream要设置error，active状态设置为false
+* 正常关闭：
+
+
+
+参考：
+
+https://deepz.cc/2021/08/cs144-lab4/
+
+https://gwzlchn.github.io/202205/cs144-lab4/#%E8%B0%83%E8%AF%95%E5%BF%83%E5%BE%97
+
+
+
