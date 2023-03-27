@@ -99,3 +99,80 @@ lambda 表达式的结果称为 lambda 函数（匿名函数）。
 
 
 ## 2 使用数据构建抽象
+
+**原生数据类型**
+
+原生数字类型：int、float、complex
+
+python中的int是无界的，可以存储任意大小的数
+
+int除以int，可以得到一个float值，一个截断的有限近似值
+
+
+
+**for顺序解包**
+
+x、y分别绑定到每对的第一个和第二个元素
+
+```python
+pairs = [[1, 2], [2, 2], [2, 3], [4, 4]]
+same_count = 0
+for x, y in pairs:
+    if x == y:
+        same_count = same_count + 1
+print(same_count) # 2
+```
+
+
+
+**list数据处理**
+
+for除了循环，还可以用于list comprehension
+
+```python
+>>> odds = [1, 3, 5, 7, 9]
+>>> [x+1 for x in odds]
+[2, 4, 6, 8, 10]
+```
+
+
+
+**高阶函数**
+
+reduce：将函数参数作用于一个数据集合，最后得到一个结果
+
+```python
+>>> def reduce(reduce_fn, s, initial):
+        reduced = initial
+        for x in s:
+            reduced = reduce_fn(reduced, x)
+        return reduced
+
+```
+
+例子：
+
+```python
+>>> reduce(mul, [2, 4, 8], 1)
+64
+```
+
+python中类似的函数有map、reduce、filter
+
+map：将函数作用于一个序列，对每个元素做一次运算，返回一个list
+
+filter：将函数作用于一个序列，对满足条件的元素做一次运算，返回一个list
+
+
+
+**Propagating Constraints**
+
+假设有一个公式，里面有5个变量
+
+如果知道了4个变量的值，那么就可以算出来剩下的一个变量值，这种方式可以用一个赋值操作表示
+
+但是这个赋值使用的公式并不能用来计算其他的变量值，即使它们可以从同一个公式推导出来
+
+<u>约束</u>，就是用来体现最原始的公式的
+
+https://composingprograms.netlify.app/sicp-python/ch2/2-3　cache
