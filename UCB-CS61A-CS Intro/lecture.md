@@ -6,7 +6,7 @@
 
 
 
-### 1 使用函数构建抽象
+## 1 使用函数构建抽象
 
 **帧**
 
@@ -163,6 +163,8 @@ map：将函数作用于一个序列，对每个元素做一次运算，返回�
 
 filter：将函数作用于一个序列，对满足条件的元素做一次运算，返回一个list
 
+> python3的filter返回的是filter对象，要转化成list再使用
+
 
 
 **Propagating Constraints**
@@ -175,4 +177,49 @@ filter：将函数作用于一个序列，对满足条件的元素做一次运�
 
 <u>约束</u>，就是用来体现最原始的公式的
 
-https://composingprograms.netlify.app/sicp-python/ch2/2-3　cache
+
+
+**面向对象**
+
+```python
+class Account:
+    def __init__(self, account_holder):
+        self.balance = 0
+        self.holder = account_holder
+
+    def deposit(self, amount):
+        self.balance += amount
+        return self.balance
+    
+if __name__ == '__main__':
+    a = Account('james')
+```
+
+`getattr`可以按名称返回对象的属性，例如`getattr(a, 'deposit')`、`getattr(a, 'balance')`
+
+`hasattr`可以测试对象是否有对应的属性
+
+```python
+print(type(Account.deposit)) # <class 'function'>
+print(type(a.deposit)) # <class 'method'>
+```
+
+作为类的属性，方法是一个函数
+
+作为实例的属性，它是一个绑定方法
+
+
+
+**多继承**
+
+![image-20230328170650593](assets/image-20230328170650593.png)
+
+在多重继承中，会有菱形的继承图，在解析一个实例的对象时，python按顺序检查：从左到右，从下到上
+
+```
+AsSeenOnTVAccount, CheckingAccount, SavingsAccount, Account, object
+```
+
+
+
+2.7
