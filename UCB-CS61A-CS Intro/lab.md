@@ -55,3 +55,84 @@ a = [[] for _ in range(3)]
 a[0].append(1)	# [[0], [1], [1]]
 ```
 
+
+
+## lab5
+
+输入一棵树`t`以及一个列表`leaves`，要求对每个叶子节点添加一个branch，其值为`leaves`中的元素
+
+sprout_leaves
+
+```python
+def sprout_leaves(t, leaves):
+    """Sprout new leaves containing the data in leaves at each leaf in
+    the original tree t and return the resulting tree.
+
+    >>> t1 = tree(1, [tree(2), tree(3)])
+    >>> print_tree(t1)
+    1
+      2
+      3
+    >>> new1 = sprout_leaves(t1, [4, 5])
+    >>> print_tree(new1)
+    1
+      2
+        4
+        5
+      3
+        4
+        5
+
+    >>> t2 = tree(1, [tree(2, [tree(3)])])
+    >>> print_tree(t2)
+    1
+      2
+        3
+    >>> new2 = sprout_leaves(t2, [6, 1, 2])
+    >>> print_tree(new2)
+    1
+      2
+        3
+          6
+          1
+          2
+    """
+    "*** YOUR CODE HERE ***"
+	    if is_leaf(t):
+        return tree(label(t), [tree(i) for i in leaves])
+    else:
+        return tree(label(t), [sprout_leaves(branch, leaves) for branch in branches(t)])
+
+```
+
+
+
+字符串的拼接之join：
+
+
+
+
+
+## lab6
+
+yield
+
+```python
+def scale(it, multiplier):
+    """Yield elements of the iterable it multiplied by a number multiplier.
+
+    >>> m = scale([1, 5, 2], 5)
+    >>> type(m)
+    <class 'generator'>
+    >>> list(m)
+    [5, 25, 10]
+
+    >>> m = scale(naturals(), 2)
+    >>> [next(m) for _ in range(5)]
+    [2, 4, 6, 8, 10]
+    """
+    "*** YOUR CODE HERE ***"
+    for i in it:
+        yield i * multiplier
+```
+
