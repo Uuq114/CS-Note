@@ -6,7 +6,7 @@
 
 这篇笔记主要内容是 Linux 上的文件系统，讨论文件系统的基本设计
 
-Ken Thompson 先实现了文件系统，在此基础上实现的 Unix
+Ken Thompson 先实现了文件系统，在此基础上实现了 Unix
 
 
 
@@ -92,35 +92,71 @@ CHS结构：cylinder-head-sector
 
 
 
-### 分块读写
+## 3 分块读写
+
+这一节标题的英文是：block and block groups
+
+文件系统为文件分配空间的粒度就是 block，而非 byte
 
 
 
+**块的大小会显著影响 FS 性能**
+
+* 大的 block 可以减少元数据的大小
+* 小的 block 可以提高 FS 空间利用率
 
 
 
+**磁盘扇区大小、FS block 大小、内存 page 大小**
+
+磁盘扇区 sector：目前 4K 的比较多，有 512e 和 4Kn 两种
+
+> 512e 是物理扇区的大小是 512B，以 1:8 的比例映射到 4K
+>
+> 4Kn 是 4K native，物理扇区的大小就是 4K
+
+`mke2fs`，这个工具可以检查物理扇区的大小、逻辑扇区的大小
+
+sector size <= block size <= memory page size，现在它们都是 4K 了
 
 
 
+**block group**
+
+ disk block 被划分成了若干 group，每个 group 含有若干 block
+
+使用 block group 的目的：让文件的元数据和文件内容更接近，利用局部性来增加吞吐量
+
+![image-20230331213131028](assets/image-20230331213131028.png)
+
+最后一个 group 可能不满
+
+superblock 和 group descriptors 会在多个 group 上备份
 
 
 
+**SSD**
+
+SSD 的 average access time 远小于磁盘：0.03 ~ 0.05 ms 对比 12 ~ 15 ms。基于磁盘设计的 block group 可能在 SSD 的文件系统上用处不大了。
 
 
 
+**block group descriptor**
+
+一个 block group descriptor 包括：
+
+* block bitmap、inode bitmap
+* inode table
+* free block count、free indoe count
+* ...
 
 
 
+**fragement & cluster**
 
+为了减少小文件也要占用一个 block 造成的空间浪费，ext2 支持为文件分配比 block 小的空间，例如 1 KB
 
-
-
-
-
-
-
-
-
+为了减少大文件的元数据大小，ext4 可以为大文件分配多个 block 的 cluster_size，称为 bigalloc
 
 
 
