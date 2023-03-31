@@ -160,3 +160,49 @@ SSD 的 average access time 远小于磁盘：0.03 ~ 0.05 ms 对比 12 ~ 15 ms�
 
 
 
+## 4 内核文件表
+
+**inode**
+
+文件的数据放在 block 中，元数据就在 inode 中。
+
+inode 一定包括：
+
+* type + permission
+* size in bytes
+* refrence count
+* block address
+
+inode 可以包括：timestamps, uid/gid, device number
+
+inode 在一个 FS 中是唯一的：
+
+* hard link 是两个 inode 相同的文件，不能跨 FS
+* soft link 记录的是一个绝对路径，可以跨 FS
+
+
+
+**进程打开文件时的内核数据结构**
+
+file offset 放在了 file table entry
+
+file size 放在了 inode
+
+![image-20230331233320624](assets/image-20230331233320624.png)
+
+两个进程打开了同一个文件，每个进程看到的 file size 是相同的，file offset 是不同的：
+
+![image-20230331233541959](assets/image-20230331233541959.png)
+
+
+
+**unix file descriptors**
+
+fd => file table => inode table
+
+file table 里面记录了文件的打开方式（）
+
+![image-20230331233821630](assets/image-20230331233821630.png)
+
+Q: open twice; open then dup; open then fork，区别是什么？
+
