@@ -206,3 +206,125 @@ file table 里面记录了文件的打开方式（）
 
 Q: open twice; open then dup; open then fork，区别是什么？
 
+
+
+## 5 inode
+
+**ext2 inode**
+
+一个 ext2 inode 的大小是 128 byte。1 KB 大小的 block 可以放 8 个 ext2 inode
+
+* direct block: 直接存储的 block number，有 12 个
+* indirect block: 一个 inode number 是 32 位，1 KB 的 indirect block 可以存 256 个 inode number
+* double indirect: 和 indirect block 类似
+
+![image-20230401224128132](assets/image-20230401224128132.png)
+
+ext2 对源代码等小文件比较好，对图片、视频等大文件不是很好
+
+
+
+**file is appendable, but not easy-insertable**
+
+上面的 block mapping mechanism 意味着，文件的追加写开销比从中间写的开销要小
+
+在需要中间写的情况下，如果是整个地替换掉 data block，那么只需要修改中间的 xxx indirect number，大小为 4 KB，开销也比较小
+
+在 ext4 中，全部是 0 的 block 不会消耗磁盘空间，inode 只会指向有实际内容的 inode
+
+
+
+**ext4**
+
+因为 ext2 对大文件不是很友好，ext4 放弃了 block mapping，使用 extent tree
+
+一个 extent 是一个连续的物理 block 的范围，它提升了大文件的性能
+
+ext4 中的一个 extent 通过一个 4 KB 的 block，可以映射到 128 MB 的连续空间
+
+如果没有连续的 128 MB 空间，或者是文件很大，ext4 会用 extent tree 来存储文件
+
+
+
+**ext2、ext4 比较**
+
+![image-20230401235448855](assets/image-20230401235448855.png)
+
+如果小文件太多，可能出现 inode 比磁盘空间先用完的情况
+
+上面表格的 inode ratio 就是一个文件大小的参考值
+
+使用 block mapping 的 ext2 能包括最多 1G 个 block，ext4 extent 最多有 4G 个 block
+
+
+
+**inode=file**
+
+inode 将 FS 的 file 抽象映射到 data block
+
+inode 不包括文件名，文件名在目录的 inode 里面
+
+![image-20230402001219275](assets/image-20230402001219275.png)
+
+
+
+## 6 目录
+
+* 目录是一种特殊的文件
+* 目录将文件名映射到 inode number
+
+
+
+**以链表形式组织的目录**
+
+每个 entry 包括：inode number、entry length、filename length、filename、pad
+
+![image-20230402003954139](assets/image-20230402003954139.png)
+
+因为`..`创建的时间更早，所以在 inode table 里面，`i2`是最小的
+
+
+
+**ext2 中的 dir entry**
+
+对文件名的长度做了限制，所以 ``name_len ``只需要 8 位了
+
+`file_type `表示类型为目录、链接等
+
+最后面的尚未分配的空间作为`pad`，合并到最后一个 entry 中
+
+![image-20230402005122301](assets/image-20230402005122301.png)
+
+dir entry 是不会跨 block 的边界的，如果空间不够分配新 entry，会开一个新的 block
+
+
+
+**修改目录内容的时间开销**
+
+创建一个 dir entry（子目录或者文件）：first-fit algorithm，线性时间复杂度
+
+删除一个 entry：将 inode number 设置为 0，将这个 entry 和前面的 entry 合并
+
+重命名一个 entry：create and remove，两次线性查找
+
+
+
+**ext4 directory**
+
+使用 hashmap 实现 filename 到 inode number 的映射，找一个 entry 的时间从 O(n) 变成了 O(1)
+
+
+
+**目录的大小**
+
+目录的大小不会自动收缩：在一个目录里面创建很多文件，然后把这些文件都删了，目录的大小不会下降
+
+要让目录真的变小，可以用 move and swap：`mkdir X; mv dirA/* X; rmdir dirA; mv X dirA`
+
+
+
+**总结**
+
+引入目录之后，FS 就可以通过 root inode 进入根目录，从根目录往下面找
+
+![image-20230402013847257](assets/image-20230402013847257.png)
