@@ -328,3 +328,84 @@ dir entry 是不会跨 block 的边界的，如果空间不够分配新 entry，
 引入目录之后，FS 就可以通过 root inode 进入根目录，从根目录往下面找
 
 ![image-20230402013847257](assets/image-20230402013847257.png)
+
+
+
+## 7 磁盘布局
+
+**ext2 block group 的结构**
+
+block group 将 block 的元数据和 block 之间距离缩短了，利用了局部性
+
+每个 group 就是一个 mini-FS
+
+每个 FS 有一个 superblock，一般存储在第一个 group（group0）中
+
+每个 group 有一个block group descriptor
+
+![image-20230402191826545](assets/image-20230402191826545.png)
+
+group desc 的结构，包含指向两个 bitmap 的指针、inode table 的指针：
+
+![image-20230402220437352](assets/image-20230402220437352.png)
+
+一个 group 有 8192 个 block，这是因为 group 里面的 block bitmap 是一个 block ，大小为 1KB，对应 8192 个block 
+
+
+
+**superblock**
+
+superblock 记录了整个 FS 的信息，例如 inode 数量、block 数量等，一般放在第一个 group
+
+在新增、修改文件时，需要同步修改 superblock 的信息，因此 superblock 这里可能成为 FS 的瓶颈，对于存储设备（磁盘、SSD）来说，存储 superblock 的位置也更容易坏掉
+
+
+
+**layout: ext2 & ext4**
+
+![image-20230402210832140](assets/image-20230402210832140.png)
+
+
+
+**play with FS**
+
+```bash
+dd if=/dev/zero of=ext2.img bs=1M count=500
+mkfs,ext2 -r 0 ext2.img
+sudo mount ext2.img /mnt/small
+// copy files to it, then umount
+debugfs -w ext2.img
+```
+
+
+
+## 8 总结
+
+**local FS summary**
+
+磁盘：
+
+* 磁盘作为块设备，读写的单位是 block，现在 block 的大小是 4K
+* 和 CPU/RAM 相比，磁盘的读写是很慢的。OS 会通过预读来增加性能。磁盘也用缓存提高写入的性能
+
+文件系统提供的抽象
+
+操作文件的接口
+
+superblock、group、group desc、inode、directory
+
+
+
+Todo:
+
+VFS layer: 系统中可能有多种 FS，VFS 是 syscall 和具体 FS 接口（如 ext2 functions）的中间层
+
+IO scheduling
+
+
+
+**leveldb 对 FS 的需求**
+
+作为 kv 存储，leveldb 对 FS 的要求不高，它只需要对文件进行追加写，不需要覆盖写 
+
+kv 存储需要的独特功能：compression、snapshot
