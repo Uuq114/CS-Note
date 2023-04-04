@@ -223,3 +223,65 @@ AsSeenOnTVAccount, CheckingAccount, SavingsAccount, Account, object
 
 
 2.7
+
+
+
+## 3 解释计算机程序
+
+`scheme`语言是一种特性不多但是很强大的语言
+
+许多解释器的结构包括两个 mutually recursion function。第一个求解环境中的表达式，第二个将函数作用于参数。它们的递归关系是这样的：使用一个函数时，需要在函数内部求表达式的值；求表达式的值又需要将函数作用于参数
+
+> `scheme`是`lisp`的一个方言，`lisp`的新的方言有`clojure`
+
+
+
+**scheme**
+
+基本形式是：`(<operator> [arg...])`
+
+`if`语法是：`(if <predicate> <consequent> <alternative>)`
+
+```scheme
+(display (/ 10 2))
+(newline)
+(display (if (>= 2 1) (* 2 3) (/ 10 2)))
+```
+
+定义函数：`(define (<name> <formal parameters>) <body>)`
+
+```scheme
+(define (square x) (* x x))
+```
+
+匿名函数：`(lambda (<formal-parameters>) <body>)`
+
+```scheme
+((lambda (x y z) (+ x y (square z))) 1 2 3)		; 12
+```
+
+`pair`：使用`cons`创建，使用`car`、`cdr`获取`pair`的前后元素的值
+
+```scheme
+(define x (cons 1 2))
+(car x)	 	; 1
+(cdr x)	 	; 2
+```
+
+`list`：使用递归的`pair`实现
+
+```scheme
+(cons 1
+      (cons 2
+            (cons 3
+                  (cons 4 nil))))
+```
+
+```scheme
+(list 1 2 3 4)
+```
+
+
+
+3.2.4 symbolic
+
