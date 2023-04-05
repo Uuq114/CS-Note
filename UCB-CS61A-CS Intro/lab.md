@@ -136,3 +136,32 @@ def scale(it, multiplier):
         yield i * multiplier
 ```
 
+
+
+## lab10
+
+`scheme`中声明`lambda`匿名函数的时候`x`也要括号括起来：
+
+```scheme
+(define (make-adder num) (lambda (x) (+ num x)))
+```
+
+将`list`中等于`item`的元素去掉，返回新的`list`：
+
+```scheme
+(define (remove item lst)
+    (cond ( (null? lst) '() )
+          ( (= (car lst) item) (remove item (cdr lst)) )
+          ( else (cons (car lst) (remove item (cdr lst))) )
+    )
+)
+```
+
+这里注意`cons`和`list`的区别：
+
+```scheme
+(define a (list 2 3))
+(cons 1 a)	; (1 2 3)
+(list 1 a)	; (1 (2 3))
+```
+
