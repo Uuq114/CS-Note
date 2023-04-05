@@ -281,7 +281,33 @@ AsSeenOnTVAccount, CheckingAccount, SavingsAccount, Account, object
 (list 1 2 3 4)
 ```
 
+`'`：转义符号
+
+```scheme
+(list 'a 'b)	; (a b)
+(list 'define 'list)	; (define list)
+(car '(a b c))	; a
+(cdr '(a b c))	; (b c)
+```
 
 
-3.2.4 symbolic
+
+在 python 中，通过 `assert`和`raise`来引发异常
+
+```python
+raise Exception('hello exception')
+```
+
+通过`try...except...`来捕获异常：
+
+```python
+try:
+    <try suite>
+except <exception class> as <name>:
+    <except suite>
+```
+
+一些`exception class`的例子：`AssertionError`、`ZeroDivisionError`
+
+
 
