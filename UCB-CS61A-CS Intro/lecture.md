@@ -292,6 +292,8 @@ AsSeenOnTVAccount, CheckingAccount, SavingsAccount, Account, object
 
 
 
+**exception**
+
 在 python 中，通过 `assert`和`raise`来引发异常
 
 ```python
@@ -310,4 +312,34 @@ except <exception class> as <name>:
 一些`exception class`的例子：`AssertionError`、`ZeroDivisionError`
 
 
+
+**表达式树（expression tree）**
+
+一个表达式的求值过程：首先计算操作数（子表达式），然后与操作符一起计算
+
+解析：从原始文本输入得到表达式树的过程
+
+解析器：词法分析器＋语法分析器
+
+词法分析器：将输入字符串分成令牌，令牌是语言的最小语法单元。实现在`scheme_tokens`中的`tokenize_line`函数。
+
+语法分析器：从令牌序列构建表达式树。实现在`scheme_reader`中的`scheme_read`函数。
+
+* `scheme_read`函数中，遇到`(` token 的时候，会开始调用`read_tail`函数。所以`scheme_read`读取列表的第一个元素，使用`read_tail`读取列表的其余部分，然后返回表示列表的`Pair`。
+
+
+
+
+
+
+
+
+
+
+
+## appendix
+
+```javascript
+javascript:window.localStorage.removeItem(Object.keys(window.localStorage).find(i=>i.startsWith('@@auth0spajs')))
+```
 

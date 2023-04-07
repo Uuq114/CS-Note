@@ -165,3 +165,52 @@ def scale(it, multiplier):
 (list 1 a)	; (1 (2 3))
 ```
 
+
+
+## hw8
+
+尾递归：在递归调用时，调用的结果直接返回给函数的调用者，而不需要进行额外的操作。
+
+```python
+# 不是尾递归
+def factorial(base, n):
+    if n == 1:
+        return base * n
+    else:
+        return factorial(base, n - 1) * n
+```
+
+上面的优化成尾递归：
+
+```python
+def factorial(base, n, res=1):
+    if n == 1:
+        return res * base
+    else:
+        return factorial(base, n - 1, n * res)
+```
+
+类似地，hw7的`accumulate`的尾递归版本为：
+
+```scheme
+(define (accumulate-tail-helper combiner start n term result)
+  (cond ( (= n 0) result )
+        ( else (accumulate-tail-helper combiner start (- n 1) term (combiner result (term n))) )
+  )
+)
+
+(define (accumulate-tail combiner start n term)
+  (accumulate-tail-helper combiner start n term start)
+)
+```
+
+
+
+
+
+判断`exp`是不是自定义的`(list '^ base exponent)`乘幂操作：
+
+```scheme
+(define (exp? exp) (and (list? exp) (eq? (car exp) '^)))
+```
+
