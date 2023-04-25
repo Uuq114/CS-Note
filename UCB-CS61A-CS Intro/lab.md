@@ -214,3 +214,53 @@ def factorial(base, n, res=1):
 (define (exp? exp) (and (list? exp) (eq? (car exp) '^)))
 ```
 
+
+
+## lab11
+
+合并两个dict，如果有重复的就覆盖
+
+```python
+dict1 = {'a': 1, 'b': 2}
+dict2 = {'b': 3, 'c': 4}
+res = dict1.copy()
+res.update(dict2)
+print(res)	# {'a': 1, 'b': 3, 'c': 4}
+```
+
+
+
+Q3 Evaluating Call Expressions中，`CallExpr`类的`eval`成员函数负责对表达式求值
+
+`CallExpr`自身的成员变量为`operator`、`operands`。`eval`传进来一个环境变量dict：`env`，对`operands`赋值。
+
+```python
+class CallExpr(Expr):
+    def eval(self, env):
+        args = [arg.eval(env) for arg in self.operands]
+        return self.operator.eval(env).apply(args)
+        # return global_env.get(self.operator.var_name).apply(args)
+```
+
+这里不能直接从`env`获取`operator`，因为`operator`可能是一个`lambda`函数，没有`var_name`，后面Q4对`lambda`函数求值时这里会出错
+
+附Q4的代码：
+
+```python
+class LambdaFunction(Value):
+    def apply(self, arguments):
+        if len(self.parameters) != len(arguments):
+            raise TypeError("Oof! Cannot apply number {} to arguments {}".format(
+                comma_separated(self.parameters), comma_separated(arguments)))
+        "*** YOUR CODE HERE ***"
+        # make a copy of parent env
+        parent_env_copy = self.parent.copy()
+        # update copy, use params and args
+        param_arg_pairs = dict(zip(self.parameters, arguments))
+        parent_env_copy.update(param_arg_pairs)
+        # evaluate body
+        return self.body.eval(parent_env_copy)
+```
+
+
+
