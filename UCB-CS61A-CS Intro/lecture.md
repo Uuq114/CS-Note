@@ -333,10 +333,6 @@ except <exception class> as <name>:
 
 
 
-
-
-
-
 ## appendix
 
 ```javascript
