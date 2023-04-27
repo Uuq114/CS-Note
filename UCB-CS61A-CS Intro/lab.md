@@ -285,3 +285,37 @@ class LambdaFunction(Value):
 `^`、`$`
 
 `\b`：单词的末尾，比如`s\b`表示以`s`结尾的词
+
+
+
+## lab14
+
+获得`float`的最大值和最小值
+
+```python
+a = float('-inf')
+b = float('inf')
+```
+
+
+
+problem2
+
+问题：`split-at`接收一个列表`lst`和数字`n`，返回一个新的列表，第一部分是列表的前`n`个值，第二部分是列表的其余值。如果`n`大于列表长度，第二部分为`nil`
+
+这里用了`let`，先把子问题的结果算出来
+
+```scheme
+(define (split-at lst n)
+    (cond ( (= n 0) (cons nil lst) )
+          ( (null? lst) (cons nil nil) )
+          ( else (let (
+              (res (split-at (cdr lst) (- n 1)) ))
+              (cons (cons (car lst) (car res)) (cdr res)))
+          )
+    )
+)
+```
+
+
+
