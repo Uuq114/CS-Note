@@ -3,9 +3,9 @@
 - [x] 0, History and Philosophy of C++
 - [x] 1, Streams I
 - [x] 2, Streams II
-- [ ] 3, Sequence Containers
-- [ ] 4, Associative Containers and Iterators
-- [ ] 5, Advanced Associative Containers
+- [x] 3, Sequence Containers
+- [x] 4, Associative Containers and Iterators
+- [x] 5, Advanced Associative Containers
 - [ ] 6, Templates
 - [ ] 7, Algorithms
 - [ ] 8, Stylometry

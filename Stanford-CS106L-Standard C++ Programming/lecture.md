@@ -118,9 +118,40 @@ while(stream >> temp) {
 
 **stringstream**
 
+有时候，我们需要将 string 像 stream 的方式处理，这时就会用到 `stringstream`
+
 使用场景：对 string 分词
 
 
 
 ## 3 Sequence Containers
 
+![image-20230429204647109](assets/image-20230429204647109.png)
+
+
+
+sequence containers: vector, list, deque
+
+
+
+## 4 Associative Containers and Iterators
+
+map, set, unordered_map, unordered_set
+
+
+
+**iterator**
+
+`iterator`的类型形如`set<int>::iterator`
+
+`map<string, int>`的`iterator`指向`std::pair<string, int>`
+
+
+
+## 5 Advanced Associative Containers
+
+multimap 可以对同一个 key ，存储多个 value。比如一个人可能有多个地址
+
+
+
+## 6 Templates
