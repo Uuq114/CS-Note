@@ -155,3 +155,40 @@ multimap 可以对同一个 key ，存储多个 value。比如一个人可能有
 
 
 ## 6 Templates
+
+template function 可以隐式实例化（instantiation），也可以显式实例化
+
+> * 显式实例化能提高编译效率，一是没有隐式实例化中的推断过程，二是把显式实例化放到一个文件中，让其他文件包含，使用时只需要实例化一次，减少实例化的次数。例如标准库中，`std::string`就是从`std::basic_string`显式实例化而来的
+>
+> * 使用显式实例化，可以把实现放到 cpp 文件中，而不必放在头文件中
+>
+>   ```cpp
+>   // template.cpp
+>   template<typename T>
+>   T min(T a, T b) {
+>       std::cout << "my min func" << std::endl;
+>       return (a < b) ? a : b;
+>   }
+>     
+>   template int min<int>(int, int);
+>   ```
+>
+>   ```cpp
+>   // template.h
+>   template<typename T>
+>   T min(T a, T b);
+>   ```
+>
+>   ```cpp
+>   // main.cpp
+>   int main() {
+>       std::cout << min(3, 5) << std::endl;
+>       std::cout << min(3.14, 5.35) << std::endl;
+>       std::cout << min('d', 'c') << std::endl;
+>       return 0;
+>   }
+>   ```
+
+
+
+## 7 Algorithm

@@ -6,7 +6,7 @@
 - [x] 3, Sequence Containers
 - [x] 4, Associative Containers and Iterators
 - [x] 5, Advanced Associative Containers
-- [ ] 6, Templates
+- [x] 6, Templates
 - [ ] 7, Algorithms
 - [ ] 8, Stylometry
 - [ ] 9, Classes
