@@ -169,7 +169,7 @@ template function 可以隐式实例化（instantiation），也可以显式实�
 >       std::cout << "my min func" << std::endl;
 >       return (a < b) ? a : b;
 >   }
->     
+>         
 >   template int min<int>(int, int);
 >   ```
 >
@@ -192,3 +192,125 @@ template function 可以隐式实例化（instantiation），也可以显式实�
 
 
 ## 7 Algorithm
+
+**iterator types**
+
+![image-20230501233614318](assets/image-20230501233614318.png)
+
+input/output 是 deref 取值、赋值
+
+random access 是可以加减任意的数字
+
+
+
+`std::ostream_iterator`
+
+可以像处理 iterator 一样处理 stream
+
+```cpp
+std::ostream_iterator<int> iterator(std::cout, ",");
+*iterator = 3;
+++iterator;
+*iterator = 3337;
+++iterator;
+*iterator = 1251;
+++iterator;
+// output
+// 3,3337,1251,
+```
+
+结合 copy 函数：
+
+```cpp
+std::vector<int> vec{3, 1, 4, 1, 5};
+std::copy(vec.begin(), vec.end(),
+          std::ostream_iterator<int>(std::cout, ","));
+```
+
+
+
+**insert iterators**
+
+![image-20230502001906391](assets/image-20230502001906391.png)
+
+
+
+**STL algortihm**
+
+STL 里面的算法是建立在 iterator 上的，这让它们能适用于很多的 container
+
+使用方式和 iterator 的类型有关
+
+STL 的算法里面有很多 template
+
+
+
+## 8 Stylometry
+
+stylometry 意为文体学，研究文本的规律，可以应用于区分不同的写作风格，比如分辨《联邦党人文集》中不同作者的文章
+
+统计一些 function word，比如：I，the，there 等
+
+
+
+## 10 Classes
+
+**运算符重载**
+
+对于二元运算符，接收一个`rhs`参数：
+
+```cpp
+Complex operator+(const Complex& rhs) const;
+```
+
+
+
+## 11 Particle Simulator
+
+假设现在要模拟一个粒子运动模型，这个模型包括`n`个粒子，每个粒子的状态包括位置`(x, y)`和速度`(vx, vy)`，同时碰撞都是弹性的
+
+在实现碰撞的逻辑时，有两种方法：
+
+* 时间驱动：划分时间，在每个离散的时间点计算粒子的状态
+
+  ![image-20230502145019729](assets/image-20230502145019729.png)
+
+* 事件驱动：维护一个未来的碰撞事件序列，在发生碰撞时，修改对应粒子的状态，同时更新序列
+
+  ![image-20230502145227236](assets/image-20230502145227236.png)
+
+
+
+## 12 Templatised Classes
+
+对于模板化的类，每个方法都要是模板函数，比如下面的`pop_back`
+
+```cpp
+template <typename T>
+class MyVector {
+    using iterator = T*;
+public:
+    iterator push_back(const T& elem);
+    void pop_back() const;
+private:
+    std::vector<T> vector;
+};
+
+template <typename T>
+void MyVector<T>::pop_back() const {
+    std::cout << "my vector pop back" << std::endl;
+    vector.pop_back();
+}
+```
+
+对于嵌套类型（比如上面的`iterator`），要使用`typename`：
+
+```cpp
+template <typename T>
+typename MyVector<T>::iterator
+        MyVector<T>::push_back(const T &elem) {
+    vector.push_back(elem);
+    return nullptr;
+}
+```
+
