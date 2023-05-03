@@ -169,7 +169,7 @@ template function 可以隐式实例化（instantiation），也可以显式实�
 >       std::cout << "my min func" << std::endl;
 >       return (a < b) ? a : b;
 >   }
->         
+>           
 >   template int min<int>(int, int);
 >   ```
 >
@@ -312,5 +312,19 @@ typename MyVector<T>::iterator
     vector.push_back(elem);
     return nullptr;
 }
+```
+
+
+
+## 13 Const
+
+`const vector<int>::iterator `和`int* const p`类似
+
+`vector<int>::const_iterator`和`const int* p`类似
+
+```cpp
+vector<int>::const_iterator itr = vec.begin();
+*itr = 5;	// bad
+++itr; // ok
 ```
 

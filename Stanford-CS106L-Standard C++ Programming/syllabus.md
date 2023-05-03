@@ -8,12 +8,12 @@
 - [x] 5, Advanced Associative Containers
 - [x] 6, Templates
 - [x] 7, Algorithms
-- [ ] 8, Stylometry
-- [ ] 9, Classes
-- [ ] 10, Functions
-- [ ] 11, ParticleSimulator
-- [ ] 12, Templatised Classes
-- [ ] 13, Const Correctness
+- [x] 8, Stylometry
+- [x] 9, Classes
+- [x] 10, Functions
+- [x] 11, ParticleSimulator
+- [x] 12, Templatised Classes
+- [x] 13, Const Correctness
 - [ ] 14, Constructors and Assignment
 - [ ] 15, RAII
 - [ ] 16, Final Topics
