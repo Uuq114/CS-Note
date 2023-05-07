@@ -169,7 +169,7 @@ template function 可以隐式实例化（instantiation），也可以显式实�
 >       std::cout << "my min func" << std::endl;
 >       return (a < b) ? a : b;
 >   }
->           
+>             
 >   template int min<int>(int, int);
 >   ```
 >
@@ -327,4 +327,63 @@ vector<int>::const_iterator itr = vec.begin();
 *itr = 5;	// bad
 ++itr; // ok
 ```
+
+
+
+## 14 Constructors and Assignment
+
+定义一个使用了模板的类时，只用`.h`文件，不在`.cpp`文件中定义成员函数
+
+```cpp
+// template.h
+template<typename T>
+class MySlice {
+private:
+    std::vector<T> slice;
+public:
+    void push_back(const T& elem) const;
+};
+
+template<typename T>
+void MySlice<T>::push_back(const T &elem) const {
+    // ...
+}
+```
+
+如上面所示，第 10 行要标出来这是一个使用模板的函数，第 11 行要用`MySlice<T>`
+
+对于 nested types，比如`MySlice<T>::iterator`，前面要用`typename`
+
+
+
+在一个类中，`const`修饰成员函数和修饰函数传入的形参的区别：
+
+* 调用会出现异常的情况：`const`的实参不能被传到没有`const`修饰的成员函数
+* `const`修饰成员函数，其实是修饰`this`指针。
+
+两者都是做出保证：不修改 data member
+
+
+
+**复制构造函数**
+
+如果类里面有指针，一定要自定义复制构造函数
+
+
+
+## 15 RAII and Smart Pointers
+
+RAII:
+
+constructor acquires, destructor releases
+
+scope based resource management
+
+
+
+raw pointer 和 heap allocation 违背了 RAII 原则，因此产生了智能指针
+
+
+
+## 16 Final Topics
 
