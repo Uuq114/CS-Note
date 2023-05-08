@@ -72,7 +72,7 @@ sinfo -R --Format='REASON:100,NODELIST:256' --noheader | sort
 
 查看详细的信息：`sacct -l`
 
-查看特定状态账号的作业信息：`sacct --states=R`
+查看特定状态账号的作业信息：`sacct --accounts=<...>`
 
 指定时间后的作业：`sacct -S YYYY-MM-DD`
 
