@@ -60,6 +60,10 @@ sinfo -R --Format='REASON:100,NODELIST:256' --noheader | sort
 
 添加作业依赖性，即作业的顺序：`scontrol update dependancy=<job_id>`
 
+修改某个作业优先级：`scontrol update job=<...> priority=<...>`
+
+查看某个用户还在排队的作业的优先级：`squeue --partition=a100 --user=<...> --state=PD --noheader --Format=jobid`
+
 **修改队列状态**
 
 调整一些节点的状态（上线、下线）：`scontrol update node=xxx state=drain reason="xxx"`
@@ -72,7 +76,7 @@ sinfo -R --Format='REASON:100,NODELIST:256' --noheader | sort
 
 查看详细的信息：`sacct -l`
 
-查看特定状态账号的作业信息：`sacct --accounts=<...>`
+查看某个用户正在运行的作业：`sacct --user=<...> --state=R`
 
 指定时间后的作业：`sacct -S YYYY-MM-DD`
 
@@ -93,6 +97,8 @@ sinfo -R --Format='REASON:100,NODELIST:256' --noheader | sort
 查看特定节点的作业信息：`squeue -n <HOST>`
 
 查看细节信息：`squeue -l`
+
+查看队列的各作业优先级：`squeue --partition=a100 --Format=jobid,account,username,prioritylong,reasonlist`
 
 
 
