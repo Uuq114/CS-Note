@@ -1,3 +1,26 @@
+**卸载 CUDA**
+
+```bash
+sudo yum remove "cuda*" "*cublas*" "*cufft*" "*cufile*" "*curand*" \
+ "*cusolver*" "*cusparse*" "*gds-tools*" "*npp*" "*nvjpeg*" "nsight*" "*nvvm*"
+```
+
+卸载原有的驱动
+
+```bash
+rpm -qa|grep -i nvid|sort
+yum remove kmod-nvidia-*
+yum remove "*nvidia*"
+yum remove "*cublas*" "cuda*"
+reboot
+```
+
+还有通过`.run`文件卸载的方法
+
+
+
+**对应版本的 CUDA 安装包下载、安装**
+
 查看 CUDA Toolkit 和 GPU Driver 版本对应表：
 
 https://docs.nvidia.com/cuda/cuda-toolkit-release-notes/index.html
@@ -27,11 +50,13 @@ kill <proc_id>
 
 
 
+**打开`nvidia-smi`持久化选项**
+
 更新CUDA 再 reboot 之后，可能 nvidia-persistenced service 没了，`nvidia-smi`
 
 命令里面 Persistence-M （全名Persistence Mode）显示为off，正常情况下应该是on，表示驱动即使没有程序需要也常驻待机，可以保证高速响应。
 
-正常情况下安装驱动时会生成`nvidia-persistenced`服务来维持Persistence Mode，如果发现该服务缺失，可以从`/usr/share/doc/NVIDIA_GLX-1.0/sample/nvidia-persistenced-init.tar.bz2`中找到安装脚本，手动生成服务。
+正常情况下安装驱动时会生成`nvidia-persistenced`服务来维持Persistence Mode，如果发现该服务缺失，可以从`/usr/share/doc/NVIDIA_GLX-1.0/samples/nvidia-persistenced-init.tar.bz2`中找到安装脚本，手动生成服务。
 
 ```bash
 tar -xjf <...>.tar.bz2
@@ -42,15 +67,13 @@ sudo systemctl start nvidia-persistenced
 
 
 
-
-
 可能是 `nvidia-persistenced`的 Github：
 
 https://github.com/NVIDIA/nvidia-persistenced
 
 
 
-更新驱动 reboot 之后，可能机器上的`slurmd`进程没了，这时需要重启
+更新驱动 `reboot `之后，可能机器上的`slurmd`进程没了，这时需要重启
 
 ```bash
 systemctl status slurmd
@@ -64,3 +87,10 @@ sudo nvidia-smi mig -cgi 0 -C
 ```
 
  
+
+可能要关掉 MIG 
+
+```bash
+sudo systemctl stop dcgm && nvidia-smi -i 0 -mig 0
+```
+

@@ -68,6 +68,10 @@ sinfo -R --Format='REASON:100,NODELIST:256' --noheader | sort
 
 调整一些节点的状态（上线、下线）：`scontrol update node=xxx state=drain reason="xxx"`
 
+**查看正在维护的节点**
+
+查看正在维护的节点：`sinfo -R --Format='REASON:100,NODELIST:256' --noheader | sort`
+
 
 
 ### `sacct`
