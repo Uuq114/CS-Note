@@ -48,5 +48,12 @@ Lab assignments：http://csapp.cs.cmu.edu/3e/labs.html
 
 
 
+字节序：
 
+* 大端（big endian）：高位字节在低地址，大端模式和字符串的存储模式类似
+* 小端（little endian）：低位字节在低地址
+
+
+
+## 3 Floating Point
 
