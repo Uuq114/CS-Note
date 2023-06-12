@@ -57,3 +57,63 @@ Lab assignments：http://csapp.cs.cmu.edu/3e/labs.html
 
 ## 3 Floating Point
 
+浮点数的也可以用二进制表示：
+
+![float.drawio](lecture/float.drawio.png)
+
+上面的表示法有局限性
+
+* 像`0.3`这样的数就不能用有限的位数表示，得表示为部分位循环的`0.0101[01]...`这种
+* 当小数点的位置固定的时候，能表示的数的范围就固定了，而且表示范围和精度不能兼得
+
+鉴于上面的局限性，**浮点**就是可移动的小数点
+
+
+
+**浮点表示法**
+
+类似于科学计数法，形式为：$(-1)^s \ M \ 2^E$
+
+s 是 sign bit，决定正负；M 是尾数，一个二进制小数，范围是$[1.0,2.0)$；E 是阶码
+
+ 在编码中的形式为：
+
+```
+====================
+|| s | exp | frac ||
+====================
+```
+
+exp field 编码了 exp，但是不等于 E；frac field编码了 M，但是不等于 M
+
+在 float32 中，s-exp-frac 的位数为 1-8-23 bit；在 float64 中，s-exp-frac 的位数为 1-11-52 bit
+
+
+
+**单精度浮点数**
+
+![image-20230613000056095](lecture/image-20230613000056095.png)
+
+In normalized value:
+
+* exp field is not 11...1 or 00...0
+* $E=Exp-bias$
+  * Exp: exp field unsigned value, bias: $2^{k-1}-1$, k: exp bits
+  * single precision bias = 127, E in -126...127
+  * double precision bias=1023, E in -1022...1023
+* frac has implied leading `1`, $M=1.xxxx_2$
+  * M in $1.0$...$2.0-\epsilon$
+
+把浮点数设计成这种`符号位-阶码-尾数`的编码，是为了<u>方便浮点数之间的比较</u>。本来 exp 可能是负的，但是加了 bias 之后，encoded exp field 只可能是无符号的整数，方便比较。
+
+
+
+In denormalized value:
+
+* exp field = 00...0
+* E = 1 - bias
+* frac has implied leading `0`, $M=0.xxxxx_2$
+
+当 exp field 和 frac field 全为 0 时，因为符号位 s，可能有`+0`和`-0`
+
+26'18
