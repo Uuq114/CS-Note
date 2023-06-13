@@ -116,4 +116,26 @@ In denormalized value:
 
 当 exp field 和 frac field 全为 0 时，因为符号位 s，可能有`+0`和`-0`
 
-26'18
+
+
+Special values:
+
+* exp field = 11...1
+* $\infty$: exp = 11...1, frac = 00...0
+* NaN: exp = 11...1, frac is not 00...0
+
+
+
+把 norm value 和 denorm value 表示在数轴上的话，越靠近 0 的地方数字是越密集的，可以这样理解，在 exp field 固定时，frac field 增长的速度要乘以一个权重才等于整个数字增长的速度，这个权重就是由 exp field 决定的，所以数字越大在数轴上越分散。
+
+
+
+**Rounding**
+
+四舍六入五成双
+
+IEEE 浮点数使用的舍入方式是：nearest even，向最近的偶数舍入
+
+
+
+## 4 Machine-Level Programming I: Basics
