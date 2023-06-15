@@ -139,3 +139,28 @@ IEEE 浮点数使用的舍入方式是：nearest even，向最近的偶数舍入
 
 
 ## 4 Machine-Level Programming I: Basics
+
+object code in binary form 和 assembly code 是一一对应的关系
+
+
+
+**Concepts**
+
+Intel x86 processors:
+
+* Complex Instruction Set Computer (CISC), Reduced ... (RISC)
+
+ARM: Acronym RISC Machine
+
+Architecture (Instruction Set Architecture, ISA): 定义了处理器指令集和规范。例如 Intel 的 x86、IA32、x86-64和 ARM 的 ARMv7、ARMv8
+
+Microarchitecture: ISA implementation 
+
+
+
+**C code -> object code**
+
+![compile.drawio](lecture/compile.drawio.png)
+
+26'22
+
