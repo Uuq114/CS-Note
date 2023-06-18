@@ -162,5 +162,32 @@ Microarchitecture: ISA implementation
 
 ![compile.drawio](lecture/compile.drawio.png)
 
-26'22
 
+
+**Assembly Characteristics**
+
+Data type:
+
+* Integer data
+* floating point data
+* code: byte sequence
+
+Operations:
+
+* arithmetic function on register/memory
+* transfer data between register & memory
+* transfer control
+
+
+
+disassemble binary file: `objdump -d sum > sum.d`
+
+gdb也可以反汇编
+
+
+
+**Register**
+
+`%rxx` 64bit, `%exx` 是 `%rxx` 的低 32bit
+
+49'49
