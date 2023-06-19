@@ -186,8 +186,57 @@ gdb也可以反汇编
 
 
 
+**数据格式**
+
+| Intel 数据类型 | 汇编代码后缀 | 长度（字节） |
+| -------------- | ------------ | ------------ |
+| byte           | b            | 1            |
+| word           | w            | 2            |
+| double word    | l            | 4            |
+| quad word      | q            | 8            |
+| 浮点数单精度   | s            | 4            |
+| 浮点数双精度   | l            | 8            |
+
+双字 double word 也叫 long word，所以后缀是 l
+
+浮点数用的是一组不同的指令和寄存器
+
+
+
 **Register**
 
 `%rxx` 64bit, `%exx` 是 `%rxx` 的低 32bit
 
-49'49
+程序计数器（PC）在`%rip`
+
+常用的寄存器：
+
+| 寄存器             | 功能        |
+| ------------------ | ----------- |
+| rax                | 返回值      |
+| rsp                | 栈指针      |
+| rdi, rsi, rdx, rcx | 第1-4个参数 |
+
+部分指令只会操作寄存器的部分位，生成1、2字节的指令不会影响寄存器的其他位，生成4字节的指令会将高4个字节置0
+
+
+
+移动数据：`movq <source>, <dest>`
+
+带偏移量的：`movq 8(%rbp), %rdx`
+
+
+
+取有效地址，load effective address: `leaq <src>, <dst>`
+
+src是一个address mode expression，lea`会把src的值设置为expression的值，src只能是register
+
+```assembly
+leaq (%rdi, %rdi, 2), %rax		# 3 * x
+salq $2, %rax	# 12 * x
+```
+
+
+
+## 5 Machine-Level Programming II: Control
+
