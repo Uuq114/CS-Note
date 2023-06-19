@@ -45,7 +45,7 @@ resource_name: pkg name (type=pkg), path (type=file)
 
 ```ruby
 resource_type {'resource_name':
-	attribute1 => value1,
+    attribute1 => value1,
     attribute2 => value2,
 }
 ```
