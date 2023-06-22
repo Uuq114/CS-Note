@@ -274,3 +274,8 @@ switch 因为有很多 case，所以有一个 jump table 的结构，jump table 
 > 为负值：会加一个 bias，避免索引出负值
 >
 > 范围很大：`case <val>`比较稀疏。中间的值需要建表吗？编译器会优化成 if-else 结构，甚至会用二分搜索让复杂度降到 logn
+
+
+
+## 6 Machine-Level Programming III: Procedures
+
