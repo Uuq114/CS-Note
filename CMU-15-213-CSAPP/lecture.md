@@ -240,3 +240,37 @@ salq $2, %rax	# 12 * x
 
 ## 5 Machine-Level Programming II: Control
 
+register:
+
+* temp data (rax...)
+* runtime stack (rsp...), rsp: current stack top
+* current code control point (rip...). rip: instruction pointer
+* recent test status (CF, ZF, SF, OF...)
+
+
+
+condition code:
+
+CF: carry flag (unsigned), ZF: zero flag, SF: sign flag (signed), OF: overflow flag(signed)
+
+`cmp`和`test`，这两个指令可以对上面几个寄存器赋值
+
+`sub <src>, <dst>`是执行减法的命令，把结果存到`dst`。像这种`<opr> <src>, <dst>`的模式，因为最后结果是放到`dst`的，所以后面的数都是被减数。
+
+
+
+do-while loop, while loop, for loop 都是通过`jmp`、`test`实现的
+
+
+
+**indirect jump**
+
+switch 因为有很多 case，所以有一个 jump table 的结构，jump table 里面的元素是 `case <val>` 下面的 block 开始的地方，比如`.L8`这种。所以实际的地址跳转是：start -> jump table arg -> block
+
+`jmp`首先会和最大的`case <val>`比较，而且用的是无符号数的`ja`（jump above），这样可以同时让小于 0 的和 大于最大值的都跳到 default block
+
+> 如果`case <val>`的范围很大或者为负值怎么办？
+>
+> 为负值：会加一个 bias，避免索引出负值
+>
+> 范围很大：`case <val>`比较稀疏。中间的值需要建表吗？编译器会优化成 if-else 结构，甚至会用二分搜索让复杂度降到 logn
