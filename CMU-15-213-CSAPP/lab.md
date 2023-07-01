@@ -45,3 +45,8 @@ xxx
 
 - `layout regs` 显示寄存器和反汇编窗口 √
 - `layout asm` 显示反汇编窗口 √
+
+
+
+**phase 2**
+
