@@ -279,3 +279,42 @@ switch 因为有很多 case，所以有一个 jump table 的结构，jump table 
 
 ## 6 Machine-Level Programming III: Procedures
 
+函数之间互相调用的时候，需要：
+
+* passing control，开始调用和返回的时候，转移控制权
+* passing data，传递参数和返回值，中间变量要释放
+
+
+
+栈：函数的调用和返回，对应入栈和出栈
+
+栈的底部是高地址，向低地址增长。所以，创建栈顶元素时，先减少栈指针，再写入
+
+
+
+调用`callq`时：
+
+* 将`callq`下一行的指令地写入栈顶
+* `%rip`被替换为`callq`的参数，转移控制流
+
+调用`ret`时：
+
+* 用`%rsp`获取栈顶值，替换`%rip`
+
+* 增加`%rsp`
+
+
+
+函数的返回值保存在`%rax`中
+
+
+
+**栈帧**
+
+存在多级函数调用时，栈里面会有多个元素，每个元素称为栈帧，栈帧存储了函数的状态。栈帧的范围通过`%rbp`和`%rsp`标识
+
+因为寄存器里面的值可能被其他函数改变，所以function caller有时会将可能被修改的register（如`%rbx`）推到栈里面
+
+
+
+## 7 Machine-Level Programming IV: Data
