@@ -31,7 +31,7 @@ resp, err := client.Get("https://example.com")
 
 ## Server
 
-**开启 Server**
+### 开启 Server
 
 ```golang
 http.HandleFunc("/bar", func(w http.ResponseWriter, r *http.Request) {
@@ -43,7 +43,7 @@ http.ListenAndServe(":8080", nil)
 
 `ListenAndServe` 接收一个地址和 `handler` 来启动 server，可以通过 `http.Handle` 和 `http.HandleFunc` 增加 server 的路由和对应 `handler`
 
-**自定义 Server**
+### 自定义 Server
 
 如果想控制更多的 server 选项，可以自定义一个 server
 
