@@ -64,8 +64,65 @@ r.Get("/search", func(c *gin.Context) {
         "username": username,
         "city":     city,
         "status":   "ok",
-    }
+    })
 })
 ```
 
-test
+### 获取 postform 参数
+
+通过 `DefaultPostForm` 和 `PostForm` 获取通过 form 表单提交的参数
+
+```go
+r.POST("/search", func(c *gin.Context) {
+    username := c.DefaultPostForm("username", "lisi")
+    city := c.PostForm("address")
+    c.JSON(http.StatusOK, gin.H{
+        "username": username,
+        "city":     city,
+        "status":   "ok",
+    })
+})
+```
+
+### 获取 json 参数
+
+解析通过 json 提交的数据
+
+```go
+func jsonFunc(c *gin.Context) {
+    b, _ := c.GetRawData()
+    var m map[string]interface{}
+    _ = json.Unmarshal(b, &m)
+    c.JSON(http.StatusOK, m)
+}
+```
+
+### 参数绑定
+
+`ShouldBind` 可以基于请求自动提取 json、form 表单、QuertString 类型的数据，并把值绑定到指定的 struct 对象
+
+`ShouldBind` 绑定数据的顺序：
+
+* 如果是 GET 请求，只用 form-data 绑定
+* 如果是 POST 请求，首先检查 Content-Type 是否为 json 或者 xml，再使用 form
+
+```go
+router.GET("/loginForm", func(c *gin.Context) {
+    var login Login
+    // ShouldBind()会根据请求的Content-Type自行选择绑定器
+    if err := c.ShouldBind(&login); err == nil {
+        c.JSON(http.StatusOK, gin.H{
+            "user":     login.User,
+            "password": login.Password,
+        })
+        } else {
+            c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+        }
+    })
+```
+
+## Gin 中间件
+
+Gin 框架允许在处理请请求的过程中，加入用户自己的 hook 函数，这个 hook 函数就叫中间件。中间件适合处理一些公共业务逻辑，比如登录认证、权限校验、数据分页、日志记录、耗时统计等
+
+中间件部分待补充
