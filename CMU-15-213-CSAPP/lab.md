@@ -1,22 +1,28 @@
-[toc]
+# Lab notes
 
-CSAPP lab webpage: http://csapp.cs.cmu.edu/3e/labs.html
+<!-- TOC -->
 
-- [x] data lab: http://csapp.cs.cmu.edu/3e/datalab.pdf
-- [ ] bomb lab: http://csapp.cs.cmu.edu/3e/bomblab.pdf
+- [Lab notes](#lab-notes)
+  - [data lab](#data-lab)
+  - [bomb lab](#bomb-lab)
+    - [一些 GDB 使用方法](#一些-gdb-使用方法)
+
+<!-- /TOC -->
+<!-- /TOC -->
+
+CSAPP lab webpage: <http://csapp.cs.cmu.edu/3e/labs.html>
+
+- [x] data lab: <http://csapp.cs.cmu.edu/3e/datalab.pdf>
+- [ ] bomb lab: <http://csapp.cs.cmu.edu/3e/bomblab.pdf>
 - [ ] todo
-
-
 
 ## data lab
 
 xxx
 
-
-
 ## bomb lab
 
-**一些 GDB 使用方法**
+### 一些 GDB 使用方法
 
 运行
 
@@ -45,6 +51,4 @@ xxx
 
 - `layout regs` 显示寄存器和反汇编窗口 √
 - `layout asm` 显示反汇编窗口 √
-
-
-
+- 
