@@ -4,13 +4,13 @@
 
 **Lecture**
 
-- [x] 0, Search
-- [x] 1, Knowledge
-- [x] 2, Uncertainty
-- [x] 3, Optimization
-- [x] 4, Learning
-- [x] 5, Neural Networks
-- [x] 6, Language
+- [ ] 0, Search
+- [ ] 1, Knowledge
+- [ ] 2, Uncertainty
+- [ ] 3, Optimization
+- [ ] 4, Learning
+- [ ] 5, Neural Networks
+- [ ] 6, Language
 
 **Lab**
 
