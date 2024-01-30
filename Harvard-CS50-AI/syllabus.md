@@ -2,9 +2,9 @@
 
 - Course page: <https://cs50.harvard.edu/ai/2020/>
 
-**Lecture**
+## Lecture
 
-- [ ] 0, Search
+- [x] 0, Search
 - [ ] 1, Knowledge
 - [ ] 2, Uncertainty
 - [ ] 3, Optimization
@@ -12,9 +12,9 @@
 - [ ] 5, Neural Networks
 - [ ] 6, Language
 
-**Lab**
+## Lab
 
-- [ ] 0
+- [x] 0
 - [ ] 1
 - [ ] 2
 - [ ] 3

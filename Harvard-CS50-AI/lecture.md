@@ -3,8 +3,10 @@
 
 - [Lecture](#lecture)
   - [Lecture 1 - Search](#lecture-1---search)
+  - [Lecture 2 - Knowledge](#lecture-2---knowledge)
 
 <!-- /TOC -->
+
 ## Lecture 1 - Search
 
 搜索问题的关键术语：
@@ -61,3 +63,34 @@ alpha和beta代表两个要跟踪的值，目前最好的分数和目前最坏�
 Depth-Limited Mimimax
 因为有时无法评估所有可能的情况，minimax会限制计算的步数，比如10-12步
 为了在游戏未结束时评分，需要一个评估函数，对某个状态的局面进行评分
+
+## Lecture 2 - Knowledge
+
+一些概念：
+
+- knowledge-based agent：可以基于knowledge internal representation推理的agent
+- sentence：定义了外部世界的规则，使用knowledge representaion语言
+- 一些逻辑符号：非、与、或、$\rightarrow$（蕴含，implication）、$\leftrightarrow$（双向条件，biconditional，if and only if）
+- model：
+
+Implication真值表
+
+| P | Q | P -> Q |
+|---|---|--------|
+| F | F | T |
+| F | T | T |
+| T | F | F |
+| T | T | T |
+
+其中P=F Q=T的情况，P->Q为T。这是因为implication P->Q表示P发生则Q发生，P不发生则Q不一定发生。因此P为F时，无论Q为什么，P->Q都是T
+
+Biconditional真值表
+
+| P | Q | P -> Q |
+|---|---|--------|
+| F | F | T |
+| F | T | F |
+| T | F | F |
+| T | T | T |
+
+biconditional表示的是当且仅当，if and only if。因此只有P Q同真同假时，P->Q才是真
