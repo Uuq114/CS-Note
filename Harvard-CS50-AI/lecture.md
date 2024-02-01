@@ -71,7 +71,12 @@ Depth-Limited Mimimax
 - knowledge-based agent：可以基于knowledge internal representation推理的agent
 - sentence：定义了外部世界的规则，使用knowledge representaion语言
 - 一些逻辑符号：非、与、或、$\rightarrow$（蕴含，implication）、$\leftrightarrow$（双向条件，biconditional，if and only if）
-- model：
+- model：对一些命题赋真值（指定T F？），例如P=xxx，Q=xxx，P=F Q=T
+- knowledge base：knowledge-based agent知道的一系列sentence，简写为KB
+- entailment：蕴含，但是这里指两个sentence的关系：如果在每一个model中A成立，那么B也成立，记为$\alpha \models \beta$。
+- inference：推理。从旧sentence得到新sentence的过程
+
+---
 
 Implication真值表
 
@@ -86,7 +91,7 @@ Implication真值表
 
 Biconditional真值表
 
-| P | Q | P -> Q |
+| P | Q | P <-> Q |
 |---|---|--------|
 | F | F | T |
 | F | T | F |
@@ -94,3 +99,22 @@ Biconditional真值表
 | T | T | T |
 
 biconditional表示的是当且仅当，if and only if。因此只有P Q同真同假时，P->Q才是真
+
+---
+
+语义后承（semantic consequence），$\models$，一般连接一个命题集合和一个命题。
+实质蕴涵（material implication / material conditional），$\to$，连接的是两个命题
+
+---
+
+在上一章的搜索问题中，也有一些定义，这些定义可以迁移到本章的Theorem Proving中：
+
+- initial state：starting knowledge base
+- action：inference rules
+- transition model：new knowledge base after inference
+- goal test：检查是否证明了命题
+- path cost function：证明的步数
+
+---
+
+后面还有一些名词，First-Orde Logic，Universal Quantification等，完全看不懂，先放着吧
