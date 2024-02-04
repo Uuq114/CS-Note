@@ -4,18 +4,11 @@
 - [Lecture](#lecture)
   - [Lecture 1 - Search](#lecture-1---search)
   - [Lecture 2 - Knowledge](#lecture-2---knowledge)
+  - [Lecture 3 - Uncertainty](#lecture-3---uncertainty)
 
 <!-- /TOC -->
 
 ## Lecture 1 - Search
-
-搜索问题的关键术语：
-
-- state
-- action
-- transition model
-- goal test
-- path cost
 
 搜索方法可以看成是一个图，state是node，action是directed edge，为了避免环造成搜索永远不会结束，搜索时需要维护一个explored node set
 
@@ -118,3 +111,12 @@ biconditional表示的是当且仅当，if and only if。因此只有P Q同真�
 ---
 
 后面还有一些名词，First-Orde Logic，Universal Quantification等，完全看不懂，先放着吧
+
+## Lecture 3 - Uncertainty
+
+开始介绍了一些概念：
+
+- unconditional probability：非条件概率，没有限制条件时求得的概率
+- conditional probability：条件概率，给了一些信息求得的概率。条件/非条件其实是控制了事件的样本空间
+- independence：一个事件的发生不会影响另一个事件的概率
+- Bayes
