@@ -4,7 +4,9 @@
 - [Lecture](#lecture)
   - [Lecture 1 - Search](#lecture-1---search)
   - [Lecture 2 - Knowledge](#lecture-2---knowledge)
+  - [Lecture 3 - Uncertainty](#lecture-3---uncertainty)
 
+<!-- /TOC -->
 <!-- /TOC -->
 
 ## Lecture 1 - Search
@@ -118,3 +120,35 @@ biconditional表示的是当且仅当，if and only if。因此只有P Q同真�
 ---
 
 后面还有一些名词，First-Orde Logic，Universal Quantification等，完全看不懂，先放着吧
+
+## Lecture 3 - Uncertainty
+
+概率：$0 \le P(\omega) \le 1$，$\sum_{\omega \in \Omega}P(\omega) = 1$
+非条件概率（unconditional probability）：没有其他条件下，某个事件发生的概率
+条件概率（conditional probability）：给了一些条件，此时某个事件发生的概率
+
+Bayesian Network：表示random variable之间的dependancy的数据结构
+
+- 有向图，顶点表示random variable，x到y的有向边表示x是y的parent
+- 每个x的概率为$P(x|parents(x))$
+
+Inference（中文应译作“推理”？）
+
+- query：对事件计算概率
+- evidence：对某个事件观测得到的概率
+- hidden variable：query和evidence之外的variable
+- goal：计算$P(x|e)$
+
+条件概率和联合概率成正比：$P(A \wedge B) = P(A | B)P(B)$，这里考虑$P(B)$是常数？反正就是推到了一个这样的结论。
+在使用时，可以在计算条件概率时将其转化为联合概率：
+
+$$
+    P(Appointment | light, no) = \alpha P(Appointment, light, no) \\
+    = \alpha [P(Appointment, light, no, on time) + P(Appointment, light, no, delayed)]
+$$
+
+得到一个公式，y代表hidden variable能取到的值：
+$P(X|e) = \alpha P(X,e) = \alpha \sum_{y}{P(X,e,y)}$
+Python有一些库，可以方便的计算条件概率，只需要自己定义贝叶斯网络中的节点就行了
+
+Approximate
