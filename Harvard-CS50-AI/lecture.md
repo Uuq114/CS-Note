@@ -5,7 +5,10 @@
   - [Lecture 1 - Search](#lecture-1---search)
   - [Lecture 2 - Knowledge](#lecture-2---knowledge)
   - [Lecture 3 - Uncertainty](#lecture-3---uncertainty)
+  - [Lecture 3 - Optimization](#lecture-3---optimization)
 
+<!-- /TOC -->
+<!-- /TOC -->
 <!-- /TOC -->
 <!-- /TOC -->
 
@@ -166,3 +169,57 @@ E1 --- E2 --- E3 --- E4 --- E5
 ```
 
 Hidden Markov Model的一个应用（explaination）是，给一个observation sequence，要求计算最可能的state sequence。（已知某段事件人们每天是否带伞，要求计算这段时间的天气）
+
+## Lecture 3 - Optimization
+
+local search：
+局部搜索，从一个初始解出发，只关心当前解的邻域，通过连续小步骤改进逐渐寻找最优解
+
+hill climbing：
+爬山算法，每次寻找更大的neighbor，直至找不到
+
+simulated annealing：
+模拟退火，开始时温度更高，更容易接受比current更差的neighbor，后面温度更低，接受更差的解概率降低
+
+traveling salesman problem：
+xxx
+
+linear programming：
+问题形式：$l_i \le x_i \le u_i$，在限制条件$a_1x_1+a_2x_2+...+a_nx_n \le b$或者$a_1x_1+a_2x_2+...+a_nx_n = b$下，需要求$c_1x_1+c_2x_2+...+c_nx_n$的最小值。
+
+解法：
+
+- simplex，单纯形法
+- interior point，内部点法
+
+constraint satisfaction：
+问题形式：
+四个学生，每个学生需要有三门考试，只有三天可以安排考试，并且希望不要有人一天参加两场考试。
+![alt text](img/image1.png)
+
+解法：
+
+- 画约束图（constraint graph），把存在约束条件的变量之间连接起来，形成一个无向图
+- 维护一个边的队列，每次拿出来一条边x-y，根据限制条件排除x可能取到的某些值；下一步，因为x的可能取值变动了，需要对x的其他边（x-y以外的）进行入队，用于后续的限制条件排除
+
+问题的推广：
+这种具有约束条件的情况，一般包含三个部分：
+
+- variable，变量（课程 A-G）
+- domain，variable可能的取值（day 1-3）
+- constriant，硬限制和软限制，软限制可以区分更优的解法，比如有人喜欢课程A考试早于课程B
+
+backtracking search：
+针对现在的问题，选择一个尚未确定的变量，如果这个变量和已经做的选择不冲突，就继续尝试解决剩下的问题
+
+回溯算法的优化：
+在选择一个尚未确定的变量时，如果可以选到合适的值，可以避免很多无用的计算。
+
+- minimum remaining values（MRV）：一种启发式算法，
+它选择域最小的变量，即可能取值最少的变量
+- degree heuristic：度启发式算法。一个节点的degree越大，说明它受到的约束越多，
+- least-constraining values heuristic：对一个节点来说，假设它的取值范围为$\{A,B,C\}$，每个值可以排除neighbor可能值的数量为1、2、3，那么这种启发式算法会选择A，这是因为排除更少的可能选项，意味着可能找到尽可能多的解决方案。
+
+总结：
+
+- 问题形式化：local search、linear programming、constraint satisfaction
