@@ -143,4 +143,26 @@ $$
 $P(X|e) = \alpha P(X,e) = \alpha \sum_{y}{P(X,e,y)}$
 Python有一些库，可以方便的计算条件概率，只需要自己定义贝叶斯网络中的节点就行了
 
-Approximate
+Approximate Inference：
+某些情况下，不能得到精确的概率，但是可以对概率做一个估计，因此是近似的推理
+
+如何在贝叶斯网络中做近似推理？
+
+> 举个贝叶斯网络的例子
+> ![alt text](img/image.png)
+
+- Sampling：
+用大数估计的方式来估算概率。比如要计算$P(Appointment=on\ time)$。从`Rain`开始，每个节点按概率取一个值，得到一系列variable值的集合，注意前面的variable取的值会影响后面的概率。
+- Reject Sampling：也是一种采样方法，比如要计算条件概率$P(Rain=light|Train=on\ time)$，那么就要在总样本中去掉$Train=delayed$的样本。因此拒绝采样就是在采样时排除“不符合现有evidence”的样本。拒绝采样的缺点是，如果过滤使用的evidence发生概率较低，那么取样时很多的样本都是无效的，比较低效。一种解决该问题的采样方法是likelihood weighting。
+- Likelihood Sampling：目标是避免丢弃不符合evidence的样本。因此在取样时，首先会固定已经观测到的值，例如$Train=on\ time$，然后按正常抽样方式取样（Rain->Maintence->Appointment），最后根据相关事件的概率对这个样本赋一个权值，例如$Rain=light & Maintenance=yes$的概率为0.6，那么这个样本的权重就是0.6
+- Markov Assumption：假设当前状态受前面k个状态的影响。
+- Markov Chain：random variable的序列，每个variable遵循Markov假设
+- Hidden Markov Model：Markov model for a system with hidden states that generate some observed events。例如，通过观察办公室有没有人带伞，推测今天是否下雨。和Markov模型不同，Hidden Markov model不像是一个chain，而是类似一个表格：
+
+```
+X1 --- X2 --- X3 --- X4 --- X5
+|      |      |      |      |
+E1 --- E2 --- E3 --- E4 --- E5
+```
+
+Hidden Markov Model的一个应用（explaination）是，给一个observation sequence，要求计算最可能的state sequence。（已知某段事件人们每天是否带伞，要求计算这段时间的天气）
