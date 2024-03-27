@@ -6,7 +6,9 @@
   - [Lecture 2 - Knowledge](#lecture-2---knowledge)
   - [Lecture 3 - Uncertainty](#lecture-3---uncertainty)
   - [Lecture 3 - Optimization](#lecture-3---optimization)
+  - [Lecture 4 - Learning](#lecture-4---learning)
 
+<!-- /TOC -->
 <!-- /TOC -->
 <!-- /TOC -->
 <!-- /TOC -->
@@ -152,7 +154,7 @@ Approximate Inference：
 如何在贝叶斯网络中做近似推理？
 
 > 举个贝叶斯网络的例子
-> ![alt text](img/image.png)
+> ![alt text](img/image0.png)
 
 - Sampling：
 用大数估计的方式来估算概率。比如要计算$P(Appointment=on\ time)$。从`Rain`开始，每个节点按概率取一个值，得到一系列variable值的集合，注意前面的variable取的值会影响后面的概率。
@@ -223,3 +225,122 @@ backtracking search：
 总结：
 
 - 问题形式化：local search、linear programming、constraint satisfaction
+
+## Lecture 4 - Learning
+
+Supervised Learning:
+给定一个input-output的数据集，得到一个从input到output映射的函数
+
+Classification:
+有监督学习的一种，目标是得到将input映射到离散目录的映射函数。例如，给定某个地区近期的天气统计`(date,humidity,pressure,rain)`，然后建立一个`(humidity,pressure) -> rain`的映射`f`
+
+Nearest-neighbor classification:
+一种算法，给出离input最近的data point。例如在上面的天气预报中，以`(humidity,pressure)`作为坐标，把所有的数据点列出来。
+
+![alt text](img/image2.png)
+
+k-nearest-neighbor classification:
+一种算法，对距离input最近的k个数据点，统计它们的种类，根据少数服从多数，判断input的类型。例子还是上面的例子。
+
+Perceptron learning rule:
+perceptron中文是“感知机”。这个算法的目标是得到一个分类函数`h(x1,x2)`，把input`(x1,x2)`代入得到的值和`threshold`比较，然后可以将input分类。
+
+- 分类函数`h(x1,x2)`：
+
+$$
+h(x_1,x_2)=
+\begin{cases}
+  Rain, if\ w_0+w_1x_1+w_2x_2 \ge 0 \\
+  No\ rain, otherwise
+\end{cases} \\
+h_w(x)=
+\begin{cases}
+  1, if\ \vec{w} \cdot \vec{x} \ge 0 \\
+  0, otherwise
+\end{cases}
+$$
+
+$h_w(x)$可以看成两个向量$\vec{w}=(w_0,w_1,w_2)$、$\vec{x}=(x_0,x_1,x_2)$的乘积。要确定$w_1$、$w_2$的值，需要根据数据集计算：
+
+$$
+w_i=w_i+\alpha(y-h_w(x))x_i \\
+w_i=w_i+\alpha(actual value-estimate)x_i
+$$
+
+![alt text](img/image3.png)
+
+Support vector machine:
+目标是找到maximum margin separator。形象一点，就是找到一个离两种类型数据点距离最远的分割线
+
+![alt text](img/image4.png)
+
+Maximum margin separator:
+离任何数据点距离最远的分割线
+
+![alt text](img/image5.png)
+
+Regression:
+一种有监督学习任务，目标是得到将input映射到连续值的函数。比如线性回归。
+
+---
+
+上面的是各种解决问题的方法，下面是如何评估这些方法，如何评估不同的假设。
+
+Loss function:
+损失函数。值越小越好，可以代表成本函数（做出假设的成本）、预测的失败等等。下面是常见的损失函数。
+
+0-1 loss function:
+$$
+L(actual,predicted)=
+\begin{cases}
+  0,if\ actual=predicted \\
+  1,otherwise
+\end{cases}
+$$
+
+如果预测不对，那么损失函数的输出就是1
+
+$L_1$ loss function:
+$$
+L(actual,presicted)=|actual-predicted|
+$$
+
+这里损失函数取的是沿y轴方向的距离
+
+$L_2$ loss function:
+$$
+L(actual,predicted)=(actual-predicted)^2
+$$
+
+这里损失函数取的是沿y轴距离的平方。和$L_1$的区别在于，误差较大的地方，loss会被放大
+
+Overfitting:
+过拟合。和特定样本的拟合程度太高，对其他的数据集拟合效果很差。
+
+---
+
+上面介绍了几种损失函数。在解决实际问题中，一般会定义一个成本函数`cost(h)`，它包括损失函数，这代表做出假设的成本。
+如果只有`cost(h)=loss(h)`，那么由于只有单一的降低损失的目标，可能会造成过拟合。
+因此为了避免过拟合，成本函数需要增加一项`complexity(h)`，代表假设的复杂性。一般我们更偏向简单的假设，更简单的解决方案。
+因此最终的成本函数看起来是：
+$$
+cost(h)=loss(h)+\lambda complexity(h)
+$$
+假设的成本包括假设的损失以及假设的复杂性，因为需要惩罚太复杂的假设。$\lambda$是自定义的参数
+
+Regularization:
+正则化。对复杂假设进行惩罚，避免过拟合的过程。
+$$
+cost(h)=loss(h)+\lambda complexity(h)
+$$
+
+Holdout cross-validation:
+留出交叉验证。将数据分成训练集和测试集。
+
+k-fold cross-validation:
+k折交叉验证。将数据分成k份。一共进行k次实验，每次用1份作为测试集，用其他k-1份做训练集。
+
+Python中的机器学习库：
+`scikit-learn`
+
+slides memo: 67/126
