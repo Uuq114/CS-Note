@@ -7,7 +7,9 @@
   - [Lecture 3 - Uncertainty](#lecture-3---uncertainty)
   - [Lecture 3 - Optimization](#lecture-3---optimization)
   - [Lecture 4 - Learning](#lecture-4---learning)
+  - [Lecture 5 - Neural Networks](#lecture-5---neural-networks)
 
+<!-- /TOC -->
 <!-- /TOC -->
 <!-- /TOC -->
 <!-- /TOC -->
@@ -408,3 +410,15 @@ k-means clustering:
 - 有监督学习
 - 强化学习
 - 无监督学习
+
+## Lecture 5 - Neural Networks
+
+Neural network:
+
+- 神经元互相连接，并且可以接收、传递电信号
+- 神经元可以处理输入信号，可以被激活
+
+Artificial neural network:
+
+- 数学模型
+  
