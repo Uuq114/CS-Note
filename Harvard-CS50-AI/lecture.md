@@ -13,7 +13,6 @@
 <!-- /TOC -->
 <!-- /TOC -->
 <!-- /TOC -->
-<!-- /TOC -->
 
 ## Lecture 1 - Search
 
@@ -420,5 +419,95 @@ Neural network:
 
 Artificial neural network:
 
-- 数学模型
-  
+- 数学模型，包括从input到output的整个网络的结构、参数
+- 通过学习数据得到参数
+
+根据输入的一系列参数，计算$h(x_1,x_2)=w_0x_0+w_1x_1+w_2x_2$的值
+
+计算了$h(x_1,x_2)$的值之后，如何判断结果？有一系列函数：
+
+- step function
+![alt text](img/image8.png)
+- logistic function
+![alt text](img/image9.png)
+- rectified linear unit (ReLU)
+![alt text](img/image.png)
+
+根据输入参数计算h的公式$h(x_1,x_2)=w_0x_0+w_1x_1+w_2x_2$，可以表示用两层神经元表示：
+![alt text](img/image-1.png)
+顶点表示输入的参数，边表示权重
+
+Gradient descent
+梯度下降。一种训练神经网络的算法，可以最小化loss。适用于loss函数是凸函数的情况。凸函数的极小值是最小值，因此按着梯度的方向不断更新自变量，就可以达到极小值，从而最小化loss
+
+ 流程：
+
+- 初始的权重是随机的
+- 重复以下过程：
+  - 根据所有数据点计算gradient，选择能降低loss的direction
+  - 根据gradient更新权重
+
+Stochastic gradient descent
+随机梯度下降。
+和“梯度下降”区别在于，每次使用一个数据点计算梯度，而非“所有”数据点
+
+Mini-batch gradient descent
+小批量梯度下降。
+和“梯度下降”区别在于，每次根据small batch计算梯度
+
+Perceptron
+感知机。二类分类的线性分类模型。
+
+Multilayer neural network
+多层神经网络。一个input layer，一个output layer，至少一个hidden layer
+
+Backpropagation
+反向传播。一种训练包含hidden layer的神经网络的方法。
+
+流程：
+
+- 初始的权重是随机的
+- 重复以下步骤：
+  - 计算output layer的error
+  - 按output->hidden->input的顺序，传播error并更新权重
+
+Deep neural network
+深度神经网络。有很多hidden layer的神经网络
+
+Dropout
+如果模型的参数太多，训练的样本比较少，那么容易产生过拟合现象。Dropout是在每次前向传播-误差反向传播的训练中随机删掉一部分的hidden neuron，这样可以减少overfitting现象。
+
+为什么dropout可以减少过拟合现象？
+
+- 取平均。每次随机删掉神经元改变了网络的结构，因此相当于多次训练取平均
+- 减少对特定神经元的过度依赖
+
+Image concolution
+图像卷积。可以用于滤波、特征提取、边缘检测等。
+
+具体流程：
+原图片表示为矩阵A。另外有一个kernel矩阵B。每次在矩阵A里面划分一个和B一样大的矩阵，计算对应位置元素相乘的和，最后得到一个新矩阵。
+![alt text](img/image-2.png)
+![alt text](img/image-3.png)
+
+Pooling
+池化/共同使用。通过对input的区域进行采样，减少input size
+
+Max-pooling
+最大池化。将输入图像划分为多个区域，对每个区域输出其中的最大值。可以减少数据量，提取关键特征。
+
+![alt text](img/image-4.png)
+
+Convolutional neural network
+卷积神经网络。常用于分析图像。
+
+![alt text](img/image-5.png)
+
+Feed-forward neural network
+FNN。信息在层之间是单项流动的，只有input->hidden->output方向。
+
+Recurrent neural network
+循环神经网络，RNN。信息是双向流动的。
+![alt text](img/image-6.png)
+
+根据具体场景，可能会有1个input对多个output、多对1、多对多
