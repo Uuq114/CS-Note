@@ -8,7 +8,9 @@
   - [Lecture 3 - Optimization](#lecture-3---optimization)
   - [Lecture 4 - Learning](#lecture-4---learning)
   - [Lecture 5 - Neural Networks](#lecture-5---neural-networks)
+  - [Lecture 6 - Language](#lecture-6---language)
 
+<!-- /TOC -->
 <!-- /TOC -->
 <!-- /TOC -->
 <!-- /TOC -->
@@ -511,3 +513,11 @@ Recurrent neural network
 ![alt text](img/image-6.png)
 
 根据具体场景，可能会有1个input对多个output、多对1、多对多
+
+## Lecture 6 - Language
+
+语言的几个特点：
+
+- syntax，句子中不同的成分有位置顺序
+- semantics，一个句子有很多种表达形式。句子各种成分即使满足了syntax，也不一定表示有意义的东西。
+
