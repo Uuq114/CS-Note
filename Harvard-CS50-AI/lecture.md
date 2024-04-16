@@ -521,3 +521,34 @@ Recurrent neural network
 - syntax，句子中不同的成分有位置顺序
 - semantics，一个句子有很多种表达形式。句子各种成分即使满足了syntax，也不一定表示有意义的东西。
 
+句子的各种成分：
+
+- 名词，N
+- 冠词，D
+- 动词，V
+- 介词，P
+- 形容词，ADJ
+
+Context-free grammar
+上下文无关的语法。整个句子的组成有点像自动机，可以从句子的最左边开始推导，逐步替换后面的部分。
+![alt text](img/image-7.png)
+
+python的自然语言工具包：`nltk`
+
+n-gram
+文本里连续的n个items
+
+character/word n-gram
+文本里连续的n个character/word
+
+unigram: 1 item
+bigram: 2 item
+trigram: 3 item
+
+tokenization
+将文本句子切分成子单元token。
+
+word tokenization
+将文本句子切分成单词
+
+判断文本情绪，可以通过贝叶斯算法。
