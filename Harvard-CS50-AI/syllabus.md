@@ -5,18 +5,19 @@
 ## Lecture
 
 - [x] 0, Search
-- [ ] 1, Knowledge
-- [ ] 2, Uncertainty
-- [ ] 3, Optimization
-- [ ] 4, Learning
-- [ ] 5, Neural Networks
-- [ ] 6, Language
+- [x] 1, Knowledge
+- [x] 2, Uncertainty
+- [x] 3, Optimization
+- [x] 4, Learning
+- [x] 5, Neural Networks
+- [x] 6, Language
 
 ## Lab
 
 - [x] 0
-- [ ] 1
-- [ ] 2
-- [ ] 3
-- [ ] 4
-- [ ] 5
+- [x] 1
+- [x] 2
+- [x] 3
+- [x] 4
+- [x] 5
+- [x] 6
