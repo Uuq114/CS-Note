@@ -98,4 +98,25 @@ Data Manipulation Language(DML)
 从DB存取数据。
 
 - procedural，过程式。描述了数据操作的步骤和流程。例如早期的数据库DML。
-- non-procedural，非过程式。只描述希望达成的结果，而不关注步骤。例如SQL。
+- non-procedural，非过程式（声明式）。只描述希望达成的结果，而不关注步骤。例如SQL。
+
+Relational algebra
+其中，procedural也称relational algebra 关系代数。关系代数中有一些运算符，用运算符对tuple进行计算，可以操作数据。一些运算符：select、projection、union等
+
+![alt text](img/image.png)
+
+![alt text](img/image-1.png)
+
+![alt text](img/image-2.png)
+
+关系代数的表达式其实还是描述了查询数据的具体操作，和前面提到的data model设计标准还是有差距。
+relation model的设计和DML的设计是分开的，并不依赖具体的DML实现。
+SQL是relational model DML的事实标准
+
+一些拓展
+document/object data model发展很快。
+在document data model中，数据的层级由object直接体现：
+
+![alt text](img/image-3.png)
+
+elastic中好像就是这种结构。
