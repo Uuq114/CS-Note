@@ -6,7 +6,7 @@
 * 容器（Container）：类似于一个轻量级的沙盒，可以将其看作一个极简的Linux系统环境（包括root权限、进程空间、用户空间和网络空间等），以及运行在其中的应用程序。Docker引擎利用容器来运行、隔离各个应用。容器是镜像创建的应用实例，可以创建、启动、停止、删除容器，各个容器之间是是相互隔离的，互不影响。注意：镜像本身是只读的，容器从镜像启动时，Docker在镜像的上层创建一个可写层，镜像本身不变。
 * 仓库（Repository）：类似于代码仓库，这里是镜像仓库，是Docker用来集中存放镜像文件的地方。注意与注册服务器（Registry）的区别：注册服务器是存放仓库的地方，一般会有多个仓库；而仓库是存放镜像的地方，一般每个仓库存放一类镜像，每个镜像利用tag进行区分，比如Ubuntu仓库存放有多个版本（12.04、14.04等）的Ubuntu镜像。
 
-![info](C:\Users\Lavoie\Desktop\note\CS-Note\docker\assets\info.png)
+![info](.\assets\info.png)
 
 
 
@@ -31,7 +31,7 @@
   docker images
   ```
 
-  ![image-20221111225453140](C:\Users\Lavoie\Desktop\note\CS-Note\docker\assets\image-20221111225453140.png)
+  ![image-20221111225453140](.\assets\image-20221111225453140.png)
 
 ​		`-m`：指定说明信息
 
@@ -70,7 +70,7 @@
   COPY ./* /usr/share/gitdir/
   ```
 
-  ![image-20221112000807169](C:\Users\Lavoie\Desktop\note\CS-Note\docker\assets\image-20221112000807169.png)
+  ![image-20221112000807169](.\assets\image-20221112000807169.png)
 
 ​	
 
@@ -99,7 +99,7 @@ docker run -it centos:latest /bin/bash
 
 后台运行时的stdout都输出到log，使用`docker logs <container_name/container_id>`查看
 
-![image-20221112002833771](C:\Users\Lavoie\Desktop\note\CS-Note\docker\assets\image-20221112002833771.png)
+![image-20221112002833771](.\assets\image-20221112002833771.png)
 
 
 
