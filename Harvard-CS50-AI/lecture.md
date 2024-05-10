@@ -166,7 +166,7 @@ Approximate Inference：
 - Markov Chain：random variable的序列，每个variable遵循Markov假设
 - Hidden Markov Model：Markov model for a system with hidden states that generate some observed events。例如，通过观察办公室有没有人带伞，推测今天是否下雨。和Markov模型不同，Hidden Markov model不像是一个chain，而是类似一个表格：
 
-```
+```pesudo
 X1 --- X2 --- X3 --- X4 --- X5
 |      |      |      |      |
 E1 --- E2 --- E3 --- E4 --- E5

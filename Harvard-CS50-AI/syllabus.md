@@ -1,6 +1,7 @@
 # CS50 Syllabus
 
 - Course page: <https://cs50.harvard.edu/ai/2020/>
+- Syllabus: <https://15445.courses.cs.cmu.edu/spring2023/schedule.html>
 
 ## Lecture
 
