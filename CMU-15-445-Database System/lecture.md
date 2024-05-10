@@ -4,6 +4,7 @@
 
 - [Lecture](#lecture)
   - [Lecture 1 - Course Overview \& Relational Model](#lecture-1---course-overview--relational-model)
+  - [Lecture 2 - Modern SQL](#lecture-2---modern-sql)
 
 <!-- /TOC -->
 
@@ -120,3 +121,77 @@ document/object data model发展很快。
 ![alt text](img/image-3.png)
 
 elastic中好像就是这种结构。
+
+## Lecture 2 - Modern SQL
+
+SQL操作的对象是bag/multiset而非set，即db中是允许有重复行的
+
+aggregate：
+聚合操作，从a bag of tuples得到single value的操作，例如`AVG`、`MIN`、`MAX`、`SUM`、`COUNT`.
+
+`DISTINCT`：聚合操作基本只能用在`SELECT`中。`AVG`、`SUM`、`COUNT`支持`DISTINCT`去重。
+`GROUP BY`：将tuple投影到subset，即分组。注意在`SELECT`输出结果中出现的非聚合列**必须**出现在`GROUP BY`中。
+
+```sql
+SELECT AVG(s.gpa), e.cid, s.name
+  FROM enrolled AS e JOIN student AS s
+    ON e.sid = s.sid
+  GROUP BY e.cid, s.name
+```
+
+这里`e.cid`和`s.name`必须在`group by`中出现，因为它们不是聚合函数中的字段，查出来的值可能不唯一。加到`group by`里之后，相当于把整个`e.cid, s.name`作为group的标准
+
+![alt text](img/image-4.png)
+
+`HAVING`
+在聚合的基础上的filter，类似于对`GROUP BY`的`WHERE`
+
+![alt text](img/image-5.png)
+
+操作字符串
+
+- `LIKE`匹配字符串，`%`匹配任意长度的字符串，`_`匹配任意字符
+- 有的DBMS有内置的函数，比如`SUBSTRING`、`UPPER`
+- 拼接字符串，使用`||`，或者内置的`CONCAT`
+
+处理输出
+`ORDER BY`排序，`LIMIT`指定tuple数量和offset
+
+嵌套查询
+`ALL`、`ANY`、`IN`（和`ANY`等价）、`EXISTS`
+
+Window Function
+
+![alt text](img/image-6.png)
+
+```sql
+select *, row_number() over () as row_num
+from enrolled
+```
+
+![alt text](img/image-7.png)
+
+`OVER`指定了将tuple分组的方式。使用`PARTITION BY`可以指定group
+
+```sql
+select *, row_number() over (partition by cid) as row_num
+from enrolled
+```
+
+![alt text](img/image-8.png)
+
+如果此时有`OEDER BY`，是在每个group内部排序
+
+举例，从选课表获取成绩第二高的学生，包括所有课程
+
+```sql
+select * from (
+  select *, rank() over (partition by cid order by grade asc) as ranking
+    from enrolled
+) as ranks
+where ranks.ranking=2
+```
+
+临时表
+
+![alt text](img/image-9.png)
