@@ -195,3 +195,5 @@ where ranks.ranking=2
 临时表
 
 ![alt text](img/image-9.png)
+
+可以定义一个临时的表，在后面的SQL再使用
