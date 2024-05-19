@@ -5,7 +5,10 @@
 - [Lecture](#lecture)
   - [Lecture 1 - Course Overview \& Relational Model](#lecture-1---course-overview--relational-model)
   - [Lecture 2 - Modern SQL](#lecture-2---modern-sql)
+  - [Lecture 3 - Database Storage (Part 1)](#lecture-3---database-storage-part-1)
 
+<!-- /TOC -->
+<!-- /TOC -->
 <!-- /TOC -->
 
 ## Lecture 1 - Course Overview & Relational Model
@@ -197,3 +200,142 @@ where ranks.ranking=2
 ![alt text](img/image-9.png)
 
 可以定义一个临时的表，在后面的SQL再使用
+
+## Lecture 3 - Database Storage (Part 1)
+
+![alt text](img/image-10.png)
+
+potpourri，大杂烩
+
+Disk-based architecture
+DBMS假设DB的主要存储是disk。DBMS的组件需要在volatile和non-volatile storage上管理数据
+
+一些常用的数字：
+
+- L1 cache，1 ns
+- L2 cache，4 ns
+- DRAM，100 ns
+- SSD，16000 ns，0.016 ms
+- HDD，2 ms
+- Network storage，50 ms
+- Tape，1000 ms，1 s
+
+sequential/random access
+
+non-volatile storage上的random access比sequential access慢很多
+
+因此DBMS希望能尽量使用sequential access：
+
+- 减少向random page写的次数
+- 一次分配多个page，称为一个extent
+
+DBMS设计目标：
+
+- 让DBMS可以管理大小超过available memory的DB
+- 因为磁盘读写开销很大，需要控制向磁盘的读写次数
+- 因为随机访问的开销大于顺序访问，因此需要尽量用顺序访问
+
+面向磁盘的DBMS设计：
+
+![alt text](img/image-11.png)
+
+一个问题：
+Q：
+在上面的图中，DBMS需要自己在memory和disk之间管理内存。OS提供的mmap（memory mapping）可以将磁盘上文件的内容映射到进程的address space中，而进程则可以跳转到任何offset。由OS决定何时将page移入/移出memory。因此如果DBMS使用mmap，就可以让OS来管理所有的数据，DBMS自己并不需要“写入”任何数据。为什么不让OS来替DBMS管理数据呢？
+
+A：
+如果DBMS是只读的，那确实可以用mmap。但是如果有写入，尤其是有多个thread需要访问mmap-ed file的时候，情况会很复杂。OS只会替换脏页，而DBMS在执行事务时需要保证多个写执行的顺序。
+
+使用mmap io带来的问题：
+
+- Transaction safety。OS可能在任何时候刷新脏页
+- IO stall。DBMS不知道哪些page在内存中。在page fault时thread需要等待。
+- Error handling。访问mmap-ed file可能产生`SIGBUS`，DBMS需要处理
+- Performance issue。OS data structure contention
+
+有一些syscall可以告诉OS如何管理page，例如`madvise`、`mlock`、`msync`，但是用这些来保证OS正常工作，还不如自己管理内存。
+
+让DBMS自己管理数据的优点：
+
+- flush dirt pages to disk in correct order
+- prefetch
+- buffer replacement policy
+- thread/process scheduling
+
+DBMS file storage的两个问题：
+
+- 如何在disk file上表示DB（本次lecture）
+- 如何管理memory，以及在disk-memory之间移动数据
+
+Storage Manager
+负责维护database file。files包括很多的pages，storage manager负责数据的读写、追踪剩余的空间
+
+Database page
+page是一个固定大小的block，可以存储tuple、metadata、index、log等。有的DBMS要求page是self-contained的。每个page有唯一标识。DBMS将page ID和物理存储对应起来
+
+DBMS中的各种page：
+
+- hardware page，一般4KB
+- OS page，一般4KB
+- DB page，512B-16KB
+
+hardware page是存储设备（disk等）能保证failsage write（原子写？）的最大的block
+
+Page storage architecture
+不同的管理page的方式：
+
+- heap file
+- tree file
+- sequential/sorted file
+- hashing file
+
+这些组织方式只到page一层，和page的内部结构无关
+
+Heap file
+无序page的集合。tuple以随机顺序存储。
+支持操作：create/get/write/delete page，page iterator用于顺序遍历
+如果DB只有单个文件，就比较容易定位page，`offset = page# * pagesize`
+如果DB有多个文件，需要额外记录：file-page对应关系，哪个file有剩余空间
+
+Heap file: directory page
+在heap file organization中，除了普通的data page，还有directory page，用来记录data page在DB file的位置，以及剩余空间（每个page的free slot、free page list）。（page metadata）
+
+因为引入了额外的metadata，DBMS需要保证directory page和data page是同步的。
+
+Page header
+page header中是page metadata，记录和page content有关的信息。如page size、checksum、DBMS version、transaction visibility info、compression等。有的DBMS要求page是self-contained的。
+
+![alt text](img/image-12.png)
+
+Page layout
+组织page data的方式。
+
+- tuple-oriented。
+- log-structured。
+
+对于只存储tuple的page。一种最简单的page layout是：开头存储page数目，后面一直追加新的tuple
+
+![alt text](img/image-13.png)
+
+这种方式的问题：
+
+- 如何删除tuple？
+- 如果tuple长度是可变的？
+
+上面的page layout的改进版本是slotted pages。
+slot array将slot映射到tuple的offset。（从这个图看，tuple是倒着分配空间的？）
+
+![alt text](img/image-14.png)
+
+每个tuple都有一个unique ID。最常见的计算方式是：`page_id + offset`，例如sqlite和oracle中的rowid，postgresql的ctid。
+
+Tuple layout
+tuple的内容主要是attribute的type和value。tuple包括tuple header和tuple data。
+tuple header主要有：
+
+- visibility info，用于concurrency control
+- bitmap for null values
+
+tuple header并没有schema的metadata信息。（attribute name这种存在外面的table metadata里面？）
+
+tuple data是attribute value。它们的顺序是创建表的时候，attribute的顺序。

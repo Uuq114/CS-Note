@@ -1,7 +1,5 @@
 # CMU 15-445 Syllabus
 
-- Course page: <https://15445.courses.cs.cmu.edu/spring2023/schedule.html>
-
 <!-- TOC -->
 
 - [CMU 15-445 Syllabus](#cmu-15-445-syllabus)
@@ -9,11 +7,12 @@
   - [Project](#project)
 
 <!-- /TOC -->
+<!-- /TOC -->
 
 ## Lecture
 
-- [ ] 1, Course Overview & Relational Model
+- [x] 1, Course Overview & Relational Model
 
 ## Project
 
-- [ ] 1, xxx
+- [ ] 0, C++ Primer
