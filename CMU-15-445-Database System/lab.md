@@ -1,6 +1,12 @@
 # Lab
 
-## Project 1
+## 环境搭建
+
+我使用 windows11 的 wsl2（ubuntu 22.04）+clion remote 搭建了开发环境。本来准备直接在 windows 上开发的，但是因为 windows 上的 clang 似乎缺少 `clang-format` 还是 `clang-tidy` 的某些包，最后还是摆烂了。
+
+debug 方面。还是用的古法 print debug，试了下 `common/logger.h` 自带的 log 宏还可以。至于为什么不用 lldb，已经开始反省了
+
+## Project 0 - Primer
 
 背景：
 conflict-free replicated data type（CRDT）
@@ -23,3 +29,14 @@ CRDT 的类型：
 在添加元素时，每个元素会打上一个独特的标识。在删除元素时，这个标识会被加到 tombstone set，而不是直接删除。OR-set 可以追踪元素的添加和删除，因此可以在删除之后重新添加元素。
 在处理 “对一个元素并发的 add/remove” 时，有三种可能情况：add 赢、remove 赢、error，OR-set 会让 add 赢。
 OR-set merge 的结果是确定的。
+
+感想：
+project 0 整体还是简单的，就是 doc 里面只有伪代码而没有示例，doc 有个视频链接，里面才有实例。然后我发现这个示例中的 merge 和 doc 里面 merge 还不一样，好好好这么玩是吧
+
+视频里面的：
+![alt text](img/image-15.png)
+
+doc 里面的：
+![alt text](img/image-16.png)
+
+其他就没啥了。也没性能的要求，已经开始for套for放飞自我了
