@@ -15,4 +15,5 @@
 
 ## Project
 
-- [ ] 0, C++ Primer
+- [x] 0, C++ Primer
+- [ ] 1, Buffer Pool
