@@ -39,6 +39,101 @@ project 0 整体还是简单的，就是 doc 里面只有伪代码而没有示�
 doc 里面的：
 ![alt text](img/image-16.png)
 
-其他就没啥了。也没性能的要求，已经开始for套for放飞自我了
+其他就没啥了。也没性能的要求，已经开始 for 套 for 放飞自我了
 
 ## Project 1 - Buffer Pool
+
+由于 bustub 是基于 disk 的 db，本 project 需要实现一个 buffer pool，负责在 disk-memory 之间移动 physical page，且这个 buffer pool 对其他的组件是透明的。buffer pool 需要是 thread-safe 的。
+
+这个 project 包含几个部分：lru-k 置换算法、disk scheduler、buffer pool manager、read/write page guard
+
+### LRU-K
+
+- 每次 evict 的是 backward k-distance 最大的 frame
+- backward k-distance：前 k 次 access 到现在的时间差。对于 access 次数少于 k 次的，该值为 `+inf`
+- 有多个 `+inf` 的 frame 时，会 evict 首次访问时间最早的 frame
+
+`std::lock_guard<std::mutex>`
+
+C++11 引入的一个 RAII 类，用于管理 `std::mutex` 的生命周期，在作用域结束时自动释放锁。
+不能手动解锁，不能复制锁。
+
+### Disk Scheduler
+
+Disk Manager 的读写操作需要调度。这部分就是 Disk Scheduler 的实现。涉及两个部分：`DiskScheduler`、`DiskRequest`。
+
+- `DiskScheduler`: 使用 shared queue 处理 `DiskRequest`。一个 thread 负责将 request 加到 queue，后台 worker 负责处理 queued request。使用 `common/channel` 中的函数实现线程安全的通信。
+- `DiskRequest`: 包含 request 内容以及一个 `promise`，用来将请求结果放到里面，供请求方调用。
+
+`std::optional` 是 C++17 引入的一个类模板，主要用于管理一个可选的值，即一个可能存在也可能不存在的值。
+
+作为函数返回值：
+
+```c++
+#include <optional>
+#include <iostream>
+
+std::optional<int> findValue(bool condition) {
+    if (condition) {
+        return 42; // 返回一个有效值
+    } else {
+        return std::nullopt; // 返回无值
+    }
+}
+
+int main() {
+    auto result = findValue(true);
+    if (result) {
+        std::cout << "Value:" << *result << std::endl;
+    } else {
+        std::cout << "No value found" << std::endl;
+    }
+    return 0;
+}
+```
+
+作为函数参数：
+
+```c++
+void printID(const std::optional<int>& id) {
+    if (id) {
+        std::cout << "Your ID is" << *id << std::endl;
+    } else {
+        std::cout << "ID not provided." << std::endl;
+    }
+}
+```
+
+### Buffer Pool Manager
+
+Buffer Pool Manager 会通过 `DiskScheduler` 从 disk 获取 db page，放到 memory 中。
+另外还可以通过显式指示，将脏页写到 disk。
+除了处理读写请求、在 disk-memory 之间调度 page 之外，buffer pool manager 还需要管理 page。
+
+page 标识、有效 page：in-memory page 的内容是 physical page 内容的 copy，并且同一个 page 在不同的时间里面的内容也不一定相同。
+`page` 中的 `page_id` 就是用来标识的，如果一个 `page` 不对应 physical page，那么它的 `page_id` 会被设置为 `INVALID_PAGE_ID`。
+
+计数器：`page` 还有一个记录 “固定”（pinned）该 page 的 thread 数量。buffer pool manager 不能释放被固定的 page。
+脏页：记录 page 是否为脏页。脏页的对象在被重用之前必须写回 disk。
+
+实现要求：
+
+- 用来之前实现的 `LRUKReplacer` 和 `DiskScheduler`。前者用于追踪 accessed page，用于决定需要 evict 的 page。后者用于处理读写。
+- 在将 `page_id`map 到 `frame_id` 时，注意线程安全。
+
+![alt text](img/image-23.png)
+
+解释下 page 和 frame 的概念。frame 是 buffer pool 中用来存放从 disk 读的 physical page 的，frame 的数量是固定的，即 buffer pool 的大小。当 frame 都被占用时，buffer pool 已满。
+
+实现注意点：
+
+- `frame` 和 `page` 的概念、对应关系
+- `promise` 和 `future` 的使用。在 `FetchPage` 这个函数实现中，因为向 `disk scheduler` 发起请求的时候 `move` 了 `request`，而在创建 `future` 之前移动 `request` 会导致 `std::future_error: No associated state` 错误，即 `promise` 和 `future` 对不上。因此需要在发起请求之前创建好 future 对象。
+
+```c++
+auto future = request.callback_.get_future();
+  disk_scheduler_->Schedule(std::move(request));
+  if (future.get()) {
+    ...
+  }
+```
