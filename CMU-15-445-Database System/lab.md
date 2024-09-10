@@ -137,3 +137,14 @@ auto future = request.callback_.get_future();
     ...
   }
 ```
+
+### Read/Write Page Guards
+
+在前面 buffer pool manager 的实现中，`FetchPage` 和 `NewPage` 会返回 `Page*`，且这个 `page` 是 `pinned` 的。后面需要再手动 `Unpin`。另一方面，如果程序员忘记手动 `Unpin` page，会导致 buffer pool 中的可用页面减少，降低 IO 效率。
+
+这一节要求实现一个 `BasicPageGuard`，用以存储指向 `BufferPoolManager` 和 `Page` 的指针，并且在对应的 `Page` 对象超出作用域时立即调用 `UnpinPage`。同时，仍然需要提供手动 `Unpin` 的方法。
+
+在 `Page` 类中有保证数组正确性的读写锁。这一节还要实现只读 / 只写的 API：`ReadPageGuard` 和 `WritePageGuard`。和 `Unpin` 类似，`ReadPageGuard` 和 `WritePageGuard` 会在 `page` 超过作用域之后自动解除锁定。
+
+实现要点：
+注意 `Page` 里面有 `page_id_` 和 `is_dirty_` 成员，直接通过 `Page*` 就可以访问
