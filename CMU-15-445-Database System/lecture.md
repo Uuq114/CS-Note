@@ -10,7 +10,14 @@
     - [Log-Structured Storage](#log-structured-storage)
     - [Data Representation](#data-representation)
     - [System Catalogs](#system-catalogs)
+  - [Lecture 5 - Storage Model \& Compression](#lecture-5---storage-model--compression)
+    - [N-ary Storage Model (NSM)](#n-ary-storage-model-nsm)
+    - [Decomposititon Storage Model (DSM)](#decomposititon-storage-model-dsm)
+    - [Partition Attribute Across (PAX)](#partition-attribute-across-pax)
 
+<!-- /TOC -->
+<!-- /TOC -->
+<!-- /TOC -->
 <!-- /TOC -->
 <!-- /TOC -->
 <!-- /TOC -->
@@ -140,7 +147,7 @@ aggregate：
 聚合操作，从 a bag of tuples 得到 single value 的操作，例如 `AVG`、`MIN`、`MAX`、`SUM`、`COUNT`.
 
 `DISTINCT`：聚合操作基本只能用在 `SELECT` 中。`AVG`、`SUM`、`COUNT` 支持 `DISTINCT` 去重。
-`GROUP BY`：将 tuple 投影到 subset，即分组。注意在 `SELECT` 输出结果中出现的非聚合列 ** 必须 ** 出现在 `GROUP BY` 中。
+`GROUP BY`：将 tuple 投影到 subset，即分组。注意在 `SELECT` 输出结果中出现的非聚合列 **必须** 出现在 `GROUP BY` 中。
 
 ```sql
 SELECT AVG(s.gpa), e.cid, s.name
@@ -435,3 +442,88 @@ DBMS 会存储 database metadata 信息，将 object layout 和 tuple 数据分�
 - table、column、index、view
 - user、permission
 - internal stats
+
+## Lecture 5 - Storage Model & Compression
+
+上一节讨论的两种 tuple-oriented storage scheme：
+
+- Log-structured storage
+- Index-organized storage（map: tuple id -> newest log record）
+
+适合 write-heavy workload。而对读操作没有优化
+
+![alt text](img/image-24.png)
+
+- OLTP：处理日常的事务，如银行交易、订单处理等。它强调快速的查询和数据更新，通常涉及大量的短事务。
+- OLAP：用于数据分析和决策支持，适合进行复杂的查询和报表生成，通常涉及大量的数据聚合和分析。
+- 负载特征：OLTP 为 write-heavy，OLAP 为 read-heavy
+
+Storage Model
+
+DBMS 的 storage model 指 tuple 在 memory/disk 中的存储方式。storage model 会影响 DBMS 在不同 workload（OLTP、OLAP）上的性能，以及 DBMS 在其他方面的设计。
+
+- N-ary Storage Model (NSM)
+- Decomposition Storage Model (DSM)
+- Hybrid Storage Model (PAX)
+
+### N-ary Storage Model (NSM)
+
+DBMS 将 tuple 中的所有 attribute 存储在一个 page 中。也称为 row store。行存储。
+适用于 OLTP workload，访问的记录较少，且 write-heavy。
+NSM database 的 page size 一般是 4 KB（hardware page）的整数倍。
+
+在一个 slotted page 中，一个 tuple 的定长 / 变长 attribute 是连续存储的。通过 `page+slot` 可以定位一个 tuple。
+
+![alt text](img/image-25.png)
+
+NSM 总结：
+
+优点：
+
+- 写操作很快。（insert/update/delete）
+- 适合需要整个 tuple 的查询（OLTP）
+- 可以用 index-oriented physical storage 做 clustering（聚簇）。
+
+> clustering 在数据库中指一种存储方式，数据的物理存储顺序和索引的顺序是一致的。
+> 相关数据在物理上相邻存放，这种特性使范围查询性能增高。
+
+缺点：
+
+- 不适合 ` 需要扫描表内很多记录 ` 的查询，以及 `只需要一部分 attribute` 的查询。（无用数据读取、不同属性不利于数据压缩、NSM 随机访问模式无法预测接下来访问页面 -> 缓存命中率低）
+- OLAP 访问下的内存局部性表现差。（内存利用率低、缓存命中率低）
+- 同一 page 中不同的 value domain，不利于压缩
+
+### Decomposititon Storage Model (DSM)
+
+所有 tuple 的某个 attribute 是连续存储的。column store。列存储。
+适合 OLAP workload：read-only，读的范围大，只查询部分 attribute。
+
+存储方式：attribute 和 metadata 放在不同的数组里，数组的元素为定长的。
+每个 attibute 有个 header area，记录整列的 metadata
+
+![alt text](img/image-26.png)
+
+![alt text](img/image-27.png)
+
+定位 tuple：
+
+![alt text](img/image-28.png)
+
+变长数据：
+
+padding 的方式空间利用率低。更好的方式是 dictionary compression，将重复的变长数据转化成固定长度（如 32 bit int）。
+
+DSM 总结：
+
+优点：
+
+- DBMS 只会读需要的列，减少了无用的 IO
+- 利用局部性，以及命中缓存
+- 更好的数据压缩
+
+缺点：
+
+- 因为涉及 tuple 的拆分、合并、重新组织，在 point query、insert、update、delete 场景的性能差
+- OLAP的部分场景涉及多列查询，此时会发生列的合并，性能降低
+
+### Partition Attribute Across (PAX)
