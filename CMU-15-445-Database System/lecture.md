@@ -14,15 +14,9 @@
     - [N-ary Storage Model (NSM)](#n-ary-storage-model-nsm)
     - [Decomposititon Storage Model (DSM)](#decomposititon-storage-model-dsm)
     - [Partition Attribute Across (PAX)](#partition-attribute-across-pax)
+    - [Database Compression](#database-compression)
+    - [总结](#总结)
 
-<!-- /TOC -->
-<!-- /TOC -->
-<!-- /TOC -->
-<!-- /TOC -->
-<!-- /TOC -->
-<!-- /TOC -->
-<!-- /TOC -->
-<!-- /TOC -->
 <!-- /TOC -->
 
 ## Lecture 1 - Course Overview & Relational Model
@@ -524,6 +518,87 @@ DSM 总结：
 缺点：
 
 - 因为涉及 tuple 的拆分、合并、重新组织，在 point query、insert、update、delete 场景的性能差
-- OLAP的部分场景涉及多列查询，此时会发生列的合并，性能降低
+- OLAP 的部分场景涉及多列查询，此时会发生列的合并，性能降低
 
 ### Partition Attribute Across (PAX)
+
+设计目标是：保留列存储的优点，同时利用行存储带来的空间局部性优势。
+
+存储形式：
+PAX 将所有行划分为组，组内的按列存储。
+
+![alt text](img/image-29.png)
+
+### Database Compression
+
+因为从 disk 搬数据很耗时，所以对 page 进行压缩，可以提高每次 IO 移动的数据量。压缩的 trade-off 在：speed-compression ratio
+
+压缩过程的设计目标：
+
+- 生成固定长度的值。（固定长度的值定位和访问更高效）
+- 在查询中，尽量推迟解压缩。（避免不必要的解压，可以和谓词下推等优化技术结合提高性能）
+- 无损压缩。（任何有损的压缩必须在 application-level）
+
+![alt text](img/image-30.png)
+
+MySQL InnoDB 中的压缩：
+
+![alt text](img/image-31.png)
+
+在上图中（对应 compression granularity=block-level？），压缩过程没有考虑 data 的 high-level meaning 或 semantics，压缩的数据需要解压才能读写，因此希望有一种支持在压缩的数据上直接操作的压缩方法。
+
+在 column-level 的 compression granularity 中，就可以有这种直接修改压缩数据的方法，但是也只有列存储可以用：
+
+![alt text](img/image-32.png)
+
+Run-Length Encoding。
+碰到 `SELECT ... GROUP BY isDead` 这种查询时，就可以直接读压缩数据
+
+![alt text](img/image-33.png)
+
+Bit Packing。
+当数据不需要那么多位表示时，减少位数
+
+![alt text](img/image-34.png)
+
+对于部分较长的数据，不压缩：
+
+![alt text](img/image-35.png)
+
+Bitmap Encoding。
+对某个 attribute 的所有 unique value 设置一个 bitmap，如果某个 tuple 在一个 bitmap 的值是 1，这个 tuple 的 attribute 就等于这个 bitmap 的 value。
+
+适用条件：value 的 cardinality（基数，不重复值）较小时
+有的 DBMS 提供 bimap index
+
+![alt text](img/image-36.png)
+
+例如，在设计 `customer` 表时，表中的 `zipcode` 属性就应该选择 `INT` 类型，而非 bitmap
+
+Delta Encoding.
+可以和上面的 RLE（重复值 -> 一个值 + 重复次数）结合
+
+![alt text](img/image-37.png)
+
+Dictionary Compression。
+把常用值拎出来放到一个 dict 中，用 map code 来代替。好的 dict 设计需要同时支持快速的 encoding/decoding，例如设置有序的 value 以支持 range query。
+
+注意，通过 dict 转化 code/value 是没有哈希函数的。
+
+![alt text](img/image-38.png)
+
+Dict 的数据结构实现：
+
+- 数组。存储 ` 长度 + 变长字符串 `。只用在 immutable file
+- 哈希。不支持 range/prefix query
+- B + 树。比哈希慢，占用内存多。支持 range/prefix query。
+-
+
+![alt text](img/image-39.png)
+
+### 总结
+
+- OLTP=row store
+- OLAP=column-store
+- 压缩。多种压缩方法可以结合使用
+- Dict encoding 很有用，因为不需要 pre-sorting
