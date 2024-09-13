@@ -16,7 +16,12 @@
     - [Partition Attribute Across (PAX)](#partition-attribute-across-pax)
     - [Database Compression](#database-compression)
     - [总结](#总结)
+  - [Lecture 6 - Memory Management](#lecture-6---memory-management)
+    - [Buffer Pool Manager](#buffer-pool-manager)
+    - [总结](#总结-1)
 
+<!-- /TOC -->
+<!-- /TOC -->
 <!-- /TOC -->
 
 ## Lecture 1 - Course Overview & Relational Model
@@ -141,7 +146,7 @@ aggregate：
 聚合操作，从 a bag of tuples 得到 single value 的操作，例如 `AVG`、`MIN`、`MAX`、`SUM`、`COUNT`.
 
 `DISTINCT`：聚合操作基本只能用在 `SELECT` 中。`AVG`、`SUM`、`COUNT` 支持 `DISTINCT` 去重。
-`GROUP BY`：将 tuple 投影到 subset，即分组。注意在 `SELECT` 输出结果中出现的非聚合列 **必须** 出现在 `GROUP BY` 中。
+`GROUP BY`：将 tuple 投影到 subset，即分组。注意在 `SELECT` 输出结果中出现的非聚合列 ** 必须 ** 出现在 `GROUP BY` 中。
 
 ```sql
 SELECT AVG(s.gpa), e.cid, s.name
@@ -483,7 +488,7 @@ NSM 总结：
 
 缺点：
 
-- 不适合 ` 需要扫描表内很多记录 ` 的查询，以及 `只需要一部分 attribute` 的查询。（无用数据读取、不同属性不利于数据压缩、NSM 随机访问模式无法预测接下来访问页面 -> 缓存命中率低）
+- 不适合 ` 需要扫描表内很多记录 ` 的查询，以及 ` 只需要一部分 attribute` 的查询。（无用数据读取、不同属性不利于数据压缩、NSM 随机访问模式无法预测接下来访问页面 -> 缓存命中率低）
 - OLAP 访问下的内存局部性表现差。（内存利用率低、缓存命中率低）
 - 同一 page 中不同的 value domain，不利于压缩
 
@@ -602,3 +607,105 @@ Dict 的数据结构实现：
 - OLAP=column-store
 - 压缩。多种压缩方法可以结合使用
 - Dict encoding 很有用，因为不需要 pre-sorting
+
+## Lecture 6 - Memory Management
+
+本节讨论 DBMS 如何管理内存，以及在 disk/memory 之间移动数据的过程。
+
+- spatial control：在 disk 上写 page 的位置。目标是保证经常读写的 page 在 disk 上的物理位置也靠近
+- temporal control：时间控制。向 disk 写 / 从 disk 读 page 的时机。目标是减少从 disk 读数据时的 stall
+
+### Buffer Pool Manager
+
+memory 内有固定长度的 array。每个元素称为 frame。DBMS 请求的 page 会被拷贝到 frame 中。dirty page 会缓存在 buffer pool，不会立即写回 disk。
+
+- write-back cache：写操作会被缓存，后续异步写入主存储。
+- write-through cache：数据在写入时同事更新缓存和主存储。（减少数据不一致的风险）
+
+![alt text](img/image-40.png)
+
+Buffer pool 的 metadata 由一个 page table 维护。page table 里面存储了 pool 中 page 的信息。
+
+page 的其他有用的 metadata 有：
+
+- dirty flag
+- pin counter，引用计数
+
+page directory 和 page table 的比较：
+
+- page directory：位于 disk 上，从 page id 到 page location 的 mapping。
+- page table：位于 memory 的缓存，从 page id 到 page copy in buffer pool 的 mapping。
+
+Buffer Pool Optimization：
+
+- multiple buffer pools：在内存中划分多个 pool 可以减少锁竞争，同时提高 locality。例如：per-database/per-page type buffer pool。因为需要知道去哪个 buffer pool 找数据，需要维护一个额外的 mapping。1）obejct id：record 中有一个 object id，再维护一个 object id 到 pool 的 mapping。2）hashing：page id 到 pool 的 hash，自动
+- pre-fetching：DBMS 根据 query plan 可预取 page。例如：顺序扫描、index scan
+- scan sharing：query can reuse data。也称为 synchronized scan。允许多个查询 attach 到同一个 cursor，并 share intermediate result。和 result caching 不同。
+- buffer pool bypass：有些情况并不需要 buffer pool，比如顺序扫描 page，此时还可节省换入 / 换出 page 的开销。
+
+pre-fetching：
+
+![alt text](img/image-41.png)
+
+scan-sharing：
+
+![alt text](img/image-42.png)
+
+OS Page Cache：
+
+大部分的 disk 操作都走 OS API。OS 自己也有 filesystem cache（也称为 page cache，buffer cache）。
+大部分 DBMS 都通过 direct IO（`O_DIRECT`）来 bypass OS cache。
+
+- 避免双重缓冲：同一 page 在 DBMS buffer pool 和 OS cache 中都被缓存。
+- 控制数据一致性：通过直接控制 IO，DBMS 可以更好管理写入时机，保证故障时数据不丢失。
+- 不同驱逐策略：DBMS 考虑数据一致性、事务、高并发。OS 考虑资源共享、系统整体性能和响应时间。
+
+Buffer Replacement Policy：
+
+DBMS 的目标：
+
+- correctness
+- accuracy
+- speed
+- metadata overhead
+
+策略：
+
+- least-recently used：维护每个 page 最后的访问时间。每次 evict 最久未访问的 page
+- clock：LRU 的一种近似实现。
+  - 每个 page 有一个 reference bit，如果被访问这个值被设置为 1。
+  - 有一个循环缓冲区存放 page，还有一个 clock hand。
+  - 需要驱逐时，clock hand 会检查当前页面，如果 reference bit 为 1，将其置为 0，并移动到下一个 page。如果 bit 为 0 就驱逐。
+  - 这种做法不需要为每个 page 维护单独的 timestamp，减少内存开销。
+
+![alt text](img/image-43.png)
+
+问题：
+
+LRU 和 clock 都对 sequential flooding 很敏感。如果有顺序扫描的 query，buffer pool 会被污染，被缓存的 page 后续不会被用到。
+
+更好的 eviction policy：
+
+- LRU-K：记录每个 page 最近 k 次访问的 timestamp，计算 k 次访问之间的时间间隔，从而预测下次访问的时间。需要驱逐时，驱逐 “预测下次访问时间最晚” 的 page。
+- localization：DBMS 根据 query 决定 evict page，标准是减少每次 query 带来的缓存污染。这种方法需要记录每个 query 会访问的 page
+- priority hints：DBMS 在执行查询时了解 page 的 context，并推测 page 是否重要。（没太看懂这块）
+
+prioity hints：
+
+![alt text](img/image-44.png)
+
+Background Writing：
+
+DBMS 周期遍历 page table，把 dirty page 写到 disk。写完之后，可以 evict page 或者简单 unset dirty flag。
+注意是先写对应的 log record，再写 dirty page。
+
+Other Memory Pools：
+
+除了 tuple 和 index 要用内存，DBMS 还有一些其他的结构：
+
+![alt text](img/image-45.png)
+
+### 总结
+
+- DBMS 管理内存的能力强于 OS。
+- 利用 query plan semantics，可以做出更好的优化：eviction、allocation、pre-fetching
