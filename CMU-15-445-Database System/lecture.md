@@ -19,6 +19,16 @@
   - [Lecture 6 - Memory Management](#lecture-6---memory-management)
     - [Buffer Pool Manager](#buffer-pool-manager)
     - [总结](#总结-1)
+  - [Lecture 7 - Hash Tables](#lecture-7---hash-tables)
+    - [Hash Tables](#hash-tables)
+    - [总结](#总结-2)
+
+<!-- /TOC -->
+<!-- /TOC -->
+<!-- /TOC -->
+    - [总结](# 总结 - 1)
+
+- [](#)
 
 <!-- /TOC -->
 <!-- /TOC -->
@@ -709,3 +719,128 @@ Other Memory Pools：
 
 - DBMS 管理内存的能力强于 OS。
 - 利用 query plan semantics，可以做出更好的优化：eviction、allocation、pre-fetching
+
+## Lecture 7 - Hash Tables
+
+本节介绍 DBMS 的 execution engine 如何从 page 读写数据。
+
+两类数据结构：
+
+- hash table。无序的
+- tree。有序的
+
+设计数据结构的考虑：
+
+- data organization：要支持高效访问，需要小心设计 memory/page 中的结构
+- concurrency：要支持多线程并发的访问数据
+
+### Hash Tables
+
+包含一个无序的 array，将 key-value 关联起来。使用 hash 函数计算 key 的 array offset。
+空间复杂度：`O(n)`。
+时间复杂度：平均是 `O(1)`，最差是 `O(n)`。
+
+hash table 有两个设计点：
+
+- hash function。需要将 large key space 映射到 smaller domain。需要在 fast/collision rate 之间 tradeoff
+- hashing scheme。需要处理 hash 冲突的情况。（冲突不仅影响写，还会影响读）。需要在 alloc large hash table 和 additional instruction get/put key 之间 tradeoff。（有冲突，就需要额外的代码处理读写操作）
+
+Hash Function：
+
+- CRC-64。在网络中应用于故障探测。
+- MurmurHash。
+- CityHash。
+- XXHash。（sota）
+- FarmHash。
+
+Static Hashing Scheme：
+
+static 意味着 DBMS 需要知道存储的元素个数。如果要调整表的大小，需要重建表。
+
+- Linear Probe Hashing。解决冲突方法：线性探测，直至寻找到下一个 free slot。查询一个 key 需要 hash+scan
+- Cuckoo Hashing。
+
+还有 Robin Hood、Hopscotch、Swiss Table 等。
+
+在 Linear Hashing 中，线性探测法的查询操作会 “hash+scan 直到遇到空桶”。假设 delete 操作会原地删除，那么可能出现 “在表中但是查不到” 的情况。
+
+为了解决这个问题，删除操作不会直接删除，而是做删除标记。这样 scan 遇到 tombstone 时，仍然会向后查询。后续再执行 GC 过程，包括回收 tombstone 和 rehash。
+
+优化：
+
+- 根据不同类型的 key 设置多个 hash table。原因是 key 的 type/size 会影响哈希表实现。
+- 把 metadata 存在单独的 array 中。使用 packed bitmap 来指示 tombstone。
+- 使用 table+slot versioning metadata 来快速 invalidate 哈希表的所有 entry。例如，如果 table version 和 slot version 不匹配，那么把 slot 当成空的。
+
+Cuckoo Hashing
+
+- 有多个 hash function。在插入时，检查多个位置，选一个空位置。如果没空位置，选一个值踢掉，并且对踢掉的值 rehash。
+- 查询 / 删除都是 `O(1)` 的
+
+Dynamic Hash Table
+
+- Chained Hashing。每个 slot 有一个 bucket 组成的链表。
+- Extendible Hashing
+- Linear Hashing
+
+Bloom Filter
+
+检查元素是否存在的结构，probablilistic data structure (bitmap)
+
+- 不会出现 false negative
+- 可能出现 false positive
+- insert：计算 k 个 hash 函数的值，将 bitmap 的对应值设为 1
+- lookup：检查每个 hash 函数的值是否为 1
+
+Extendible Hashing
+
+- 和 chained-hashing 使用链表解决 hash 冲突不同，extendible hashing 会 split bucket，而非让链表一直增长。
+- 多个 slot location 可以指向同一个 bucket chain
+
+一些术语：
+
+- global depth：计算哈希值。例如 depth=g，那么在插入 key 时，就会取 key 的最右两个 bit（或者取 `key % 4`），来决定放到哪个 slot。
+- local depth：一个 bucket 里面的 value 的相同位数。
+
+![alt text](img/image-46.png)
+
+假设需要插入一个值，hash 值为 `10...`，此时因为 bucket 满，且 global depth=local depth，会触发左边 array 的扩增，global depth+1。
+
+新创建的 slot 可以指向原来的 bucket。上一步满的 bucket 里面的元素就需要 rehash 来判断放到哪个新 bucket。
+
+![alt text](img/image-47.png)
+
+![alt text](img/image-48.png)
+
+如果在插入新元素时，出现 bucket 满了以及 local depth < global depth 的情况，那么这是不需要扩展 array，只需内部完成分裂即可。会创建一个新的 bucket，再 rehash。
+
+Linear Hashing
+
+- 维护一个指针，用来追踪下个 split 的 bucket。当任何 bucket 溢出时，都在指针的地方 split bucket。
+- 对一个 key，使用多个 hash 来找 bucket
+- 多种 overflow 标准：空间利用率、overflow chain 的平均长度
+
+原表为：
+
+![alt text](img/image-49.png)
+
+假设插入 17，会造成 slot 1 的 bucket overflow，此时多一个 slot 4。而 overflow pointer 在 0，所以增加一个 hash1，并对 slot 0 的 bucket 的元素 rehash。8 仍在 bucket0，但是 20 到 bucket4 去了。而且，split pointer 到 1 去了。
+
+![alt text](img/image-50.png)
+
+在 get 20 的时候，首先用 hash0 计算没找到，再用 hash1 计算就找到了。
+
+当数据量减少时，哈希表也会合并：
+
+![alt text](img/image-51.png)
+
+此时 split pointer 会反向移动
+
+![alt text](img/image-52.png)
+
+### 总结
+
+DBMS 有很多能提供 `O(1)` 快速查询的数据结构。哈希结构在 memory/disk 中都有使用。
+
+- memory：linear probing、cuckoo hashing、chained hashing，用于 hash join 以及聚合运算等
+- disk：extendible hashing、linear hashing，用于 disk-based hash indexing
