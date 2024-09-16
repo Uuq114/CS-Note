@@ -11,7 +11,7 @@
 
 ## Schedule
 
-[link](https://15445.courses.cs.cmu.edu/spring2024/schedule.html)
+Spring 2024, [link](https://15445.courses.cs.cmu.edu/spring2024/schedule.html)
 
 ## Lecture
 
@@ -19,8 +19,15 @@
 - [x] 2, Advanced SQL
 - [x] 3, Database Storage I
 - [x] 4, Database Storage II
+- [x] 5, Storage Models & Compression
+- [x] 6, Memory Management
+- [x] 7, Hash Tables
+- [ ] 8, Tree Indexes
 
 ## Project
 
 - [x] 0, C++ Primer
-- [ ] 1, Buffer Pool
+- [x] 1, Buffer Pool
+- [ ] 2, Hash Index
+- [ ] 3, Query Execution
+- [ ] 4, Concurrency Control

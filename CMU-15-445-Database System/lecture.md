@@ -22,7 +22,9 @@
   - [Lecture 7 - Hash Tables](#lecture-7---hash-tables)
     - [Hash Tables](#hash-tables)
     - [总结](#总结-2)
+  - [Lecture 8 - Tree Indexes](#lecture-8---tree-indexes)
 
+<!-- /TOC -->
 <!-- /TOC -->
 <!-- /TOC -->
 <!-- /TOC -->
@@ -844,3 +846,6 @@ DBMS 有很多能提供 `O(1)` 快速查询的数据结构。哈希结构在 mem
 
 - memory：linear probing、cuckoo hashing、chained hashing，用于 hash join 以及聚合运算等
 - disk：extendible hashing、linear hashing，用于 disk-based hash indexing
+
+## Lecture 8 - Tree Indexes
+
