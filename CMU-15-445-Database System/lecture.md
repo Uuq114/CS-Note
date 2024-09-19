@@ -23,7 +23,9 @@
     - [Hash Tables](#hash-tables)
     - [总结](#总结-2)
   - [Lecture 8 - Tree Indexes](#lecture-8---tree-indexes)
+    - [B-Tree Family](#b-tree-family)
 
+<!-- /TOC -->
 <!-- /TOC -->
 <!-- /TOC -->
 <!-- /TOC -->
@@ -849,3 +851,80 @@ DBMS 有很多能提供 `O(1)` 快速查询的数据结构。哈希结构在 mem
 
 ## Lecture 8 - Tree Indexes
 
+上节课介绍了哈希表，一种空间复杂度 `O(n)`，平均时间复杂度 `O(1)` 的数据结构。以及 static/dynamic hash table。
+
+本节介绍树。
+
+### B-Tree Family
+
+最早的有 B-Tree、B+Tree，后面还有很多变种。
+
+B+Tree
+
+自平衡、有序的树。支持 $O(log_fn)$ 时间复杂度的查询、插入和删除。
+
+- 二叉搜索树的推广，因为一个节点可以有 > 2 个孩子
+- 针对需要读写数据量很大的系统设计的
+- f 指 tree fanout
+
+定义：
+
+B+Tree 是一棵 M-way 搜索树，满足以下特性：
+
+- 完美平衡，即每个 leaf node 的 depth 相同
+- 除 root 节点，每个节点都至少是半满的（half-full）：$\frac{M}{2-1} \le \#keys \le M-1$
+- 如果 inner node 有 k 个 key，那么它有 k+1 个孩子
+
+![alt text](img/image-53.png)
+
+B+Tree Node
+
+- 每个节点都有一个 k-v pair 的 array，根据是 inner node/leaf node，value 的类型不同。
+- array 一般是按 key 有序排列的
+- 所有的 `NULL`key 都在 first/last leaf node（这一句没太理解，是说没有空的叶子节点么，还是说 leaf node array 中的 `null` 是在两边？）
+
+leaf node
+
+![alt text](img/image-54.png)
+
+leaf node value
+
+- Record ID：指向 tuple 位置的指针
+- Tuple data：laef node 存储 tuple 的实际内容。二级索引则将 Record ID 作为 value。这种 “leaf node 存储实际内容” 也称为聚簇索引。
+
+B-Tree 和 B+Tree
+
+- B-Tree 在树中的所有节点都存储 key、value。空间利用率更高，因为每个 key 只出现一次
+- B+Tree 只在 leaf node 存储 value，inner node 只用来搜索
+
+B+Tree Insert
+
+- 先找到 leaf node `L`
+- 如果 leaf node `L` 有空位置，插入
+- 如果 leaf node `L` 没有空位置，将 `L` 分裂为 `L` 和 `L2`。两个均分 key，把中间的 key （L2 index key，即 L2 min key）放到 `L` 的 parent 中。
+
+例子，插入 16
+
+![alt text](img/image-55.png)
+
+![alt text](img/image-56.png)
+
+B+Tree Delete
+
+- 找到 leaf node `L`，移除 key
+- 如果 `L` 至少 half-full，结束
+- 如果 `L` 只有 $\frac{M}{2-1}$ 个元素，首先尝试从兄弟节点借元素。如果无法借到，将 `L` 和兄弟 merge。如果出现 merge，那么 `L`parent 要删除指向 `L` 或 `L` 兄弟的 entry。（因为 merge 之后 parent 少一个孩子）
+
+例如，下面的树删掉 19
+
+![alt text](img/image-57.png)
+
+sibling merge
+
+![alt text](img/image-58.png)
+
+又有节点不满足 half-full
+
+![alt text](img/image-59.png)
+
+slides 74
