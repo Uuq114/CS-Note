@@ -5,7 +5,7 @@
 - [Lecture](#lecture)
   - [Lecture 1 - Course Overview \& Relational Model](#lecture-1---course-overview--relational-model)
   - [Lecture 2 - Modern SQL](#lecture-2---modern-sql)
-  - [Lecture 3 - Database Storage (Part 1)](#lecture-3---database-storage-part-1)
+  - [Lecture 3 - Database Storage I](#lecture-3---database-storage-i)
   - [Lecture 4 - Datavase Storage II](#lecture-4---datavase-storage-ii)
     - [Log-Structured Storage](#log-structured-storage)
     - [Data Representation](#data-representation)
@@ -15,27 +15,14 @@
     - [Decomposititon Storage Model (DSM)](#decomposititon-storage-model-dsm)
     - [Partition Attribute Across (PAX)](#partition-attribute-across-pax)
     - [Database Compression](#database-compression)
-    - [总结](#总结)
   - [Lecture 6 - Memory Management](#lecture-6---memory-management)
     - [Buffer Pool Manager](#buffer-pool-manager)
-    - [总结](#总结-1)
   - [Lecture 7 - Hash Tables](#lecture-7---hash-tables)
     - [Hash Tables](#hash-tables)
-    - [总结](#总结-2)
   - [Lecture 8 - Tree Indexes](#lecture-8---tree-indexes)
     - [B-Tree Family](#b-tree-family)
+  - [Lecture 9 - Index Concurrency Control](#lecture-9---index-concurrency-control)
 
-<!-- /TOC -->
-<!-- /TOC -->
-<!-- /TOC -->
-<!-- /TOC -->
-<!-- /TOC -->
-    - [总结](# 总结 - 1)
-
-- [](#)
-
-<!-- /TOC -->
-<!-- /TOC -->
 <!-- /TOC -->
 
 ## Lecture 1 - Course Overview & Relational Model
@@ -160,7 +147,7 @@ aggregate：
 聚合操作，从 a bag of tuples 得到 single value 的操作，例如 `AVG`、`MIN`、`MAX`、`SUM`、`COUNT`.
 
 `DISTINCT`：聚合操作基本只能用在 `SELECT` 中。`AVG`、`SUM`、`COUNT` 支持 `DISTINCT` 去重。
-`GROUP BY`：将 tuple 投影到 subset，即分组。注意在 `SELECT` 输出结果中出现的非聚合列 ** 必须 ** 出现在 `GROUP BY` 中。
+`GROUP BY`：将 tuple 投影到 subset，即分组。注意在 `SELECT` 输出结果中出现的非聚合列 **必须** 出现在 `GROUP BY` 中。
 
 ```sql
 SELECT AVG(s.gpa), e.cid, s.name
@@ -228,7 +215,7 @@ where ranks.ranking=2
 
 可以定义一个临时的表，在后面的 SQL 再使用
 
-## Lecture 3 - Database Storage (Part 1)
+## Lecture 3 - Database Storage I
 
 ![alt text](img/image-10.png)
 
@@ -502,7 +489,7 @@ NSM 总结：
 
 缺点：
 
-- 不适合 ` 需要扫描表内很多记录 ` 的查询，以及 ` 只需要一部分 attribute` 的查询。（无用数据读取、不同属性不利于数据压缩、NSM 随机访问模式无法预测接下来访问页面 -> 缓存命中率低）
+- 不适合 ` 需要扫描表内很多记录 ` 的查询，以及 `只需要一部分 attribute` 的查询。（无用数据读取、不同属性不利于数据压缩、NSM 随机访问模式无法预测接下来访问页面 -> 缓存命中率低）
 - OLAP 访问下的内存局部性表现差。（内存利用率低、缓存命中率低）
 - 同一 page 中不同的 value domain，不利于压缩
 
@@ -615,7 +602,7 @@ Dict 的数据结构实现：
 
 ![alt text](img/image-39.png)
 
-### 总结
+总结
 
 - OLTP=row store
 - OLAP=column-store
@@ -719,7 +706,7 @@ Other Memory Pools：
 
 ![alt text](img/image-45.png)
 
-### 总结
+总结
 
 - DBMS 管理内存的能力强于 OS。
 - 利用 query plan semantics，可以做出更好的优化：eviction、allocation、pre-fetching
@@ -842,7 +829,7 @@ Linear Hashing
 
 ![alt text](img/image-52.png)
 
-### 总结
+总结
 
 DBMS 有很多能提供 `O(1)` 快速查询的数据结构。哈希结构在 memory/disk 中都有使用。
 
@@ -1055,3 +1042,5 @@ Write-optimized B+Tree
 update cascade down 的过程如下。insert 40 导致之前 buffer 中的两条记录向下传播。
 
 ![alt text](img/image-74.png)
+
+## Lecture 9 - Index Concurrency Control
