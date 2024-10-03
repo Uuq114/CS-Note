@@ -927,4 +927,131 @@ sibling merge
 
 ![alt text](img/image-59.png)
 
-slides 74
+Composite Index
+
+复合索引，key 包含多个 attribute。例如 `CREATE INDEX LFM_name ON artist(last_name, first_name, middle_names NULLS FIRST);`
+
+如果查询条件符合 “复合索引的前缀”，那么可以查询可以用到 B+Tree 索引。例如，在 `<a,b,c>` 上有索引，那么 `abc` 或者 `ab` 可以用索引，`b` 和 `c` 就不会用到索引。
+
+对于哈希索引，查询条件中要用到所有 attribute
+
+B+Tree - Duplicate Keys
+
+重复 key 的两种处理方法：
+
+- append record ID：将 tuple 的 unique record ID 作为 key 的一部分，保证 key 仍然是唯一的。
+- overflow leaf node：允许 leaf node 可以溢出到 overflow node，将重复的 key 放到 overflow node 中。
+
+append record ID 方法，插入 6：
+
+![alt text](img/image-60.png)
+
+![alt text](img/image-61.png)
+
+overflow leaf node 方法，插入 6、7、6：
+
+![alt text](img/image-62.png)
+
+![alt text](img/image-63.png)
+
+Clustered Index
+
+primary key 的顺序就是 table 物理存储的顺序。
+
+有的 DB 总是用聚簇索引（clustered index），如果 table 没有指定 primary key，DB 会指定一个 hidden primary key。
+
+在非聚簇索引中，如果按照 tuple 出现的顺序获取 tuple 效率较低，因为连续的 tuple 对应的 page 并不是连续的，redundant read 会造成 tuple scan 效率低。要解决这个问题，可以先查询 tuple 对应的 page ID，再按照 page ID 对 tuple 进行排序，这样 DB 对每个 page 只会取一次了。
+
+![alt text](img/image-64.png)
+
+B+ Tree Design Choices
+
+- node size
+- merge threshold
+- variable-length keys
+- intra-node search
+
+node size
+
+存储设备越慢，B+Tree 的 optimal node size 越大。
+
+- HDD：1MB
+- SSD：10KB
+- memory：512B
+
+另外，optimal node size 还受 workload 影响，例如 leaf node scan、root-to-leaf traversal。
+（这里我推测，对于同一存储设备，leaf node scan 的 optimal size 是小于 root-to-leaf traversal 的。因为后者连续读更少，相当于存储设备更慢了）
+
+merge threshold
+
+- 有的 DBMS 并不会在节点 half full 时 merge node。（B+Tree 的平均 occupancy rate 是 69%）
+- delay merge 可能减少 reorganization
+- 让 smaller node 存在可能比周期性 rebuild tree 更好（其实也是 delay merge？）
+- PostgreSQL 称他们的 B+Tree 是 non-balanced tree（nbtree）
+
+varaible-length keys
+
+- pointers：将指向 tuple attribute 的指针作为 key 存储。也称为 T-Tree
+- variable-length nodes：每个 node 的大小可以变化。需要小心的内存管理。
+- padding：总是 pad key to max length of the key type
+- key map/indirection：在 node 内部放一个指针数组，指向 key+value list（没看懂这啥意思）
+
+intra-node search
+
+- linear。顺序扫描，使用 SIMD 可以加速扫描。
+
+> SIMD（单指令多数据）是一种并行计算技术，可以在处理器中同时对多个数据元素执行相同的操作。使用 SIMD 可以显著提高数组处理的性能，尤其是在进行大量相同操作时，例如比较数组中的元素与一个固定值。
+>
+> 例如 `_mm_cmpeq_epi32_mask` 指令可用于比较两个 128 位的整数向量（即一个向量对应 4 个 32 位整数），并返回一个掩码，表示哪些元素是相等的。
+
+![alt text](img/image-65.png)
+
+- binary。二分查找
+- interpolation。插值。根据已知的 key distribution 推测 key 的位置。SIGMOD 19 有一篇：Efficiently Searching In-Memory Sorted Arrays: Revenge of the Interpolation Search? [paper link](https://dl.acm.org/doi/10.1145/3299869.3300075)
+
+其他的 intra-node search 优化：
+
+- prefix compression。同一个 leaf node 中的 sorted keys 有公共前缀，因此可以把公共前缀提取出来，每个 key 只用存不重复的后缀。
+
+![alt text](img/image-66.png)
+
+- deduplication。对于非唯一索引（non-unique index），可以有重复的 key，因此在 leaf node 中可以只存储相同的 key 一次。（这里的 kv 是指：key->attribute 或者 page id 那种？）
+
+![alt text](img/image-67.png)
+
+- suffix truncation。注意到 inner node 中的 key 只用来指导搜索过程，因此不需要完整的 key。因此只需要存储 minimum prefix，能正确 route traffic 即可。（这里的 minimum 意味着需要维护吧，虽然经常修改的可能性也不大。考虑到 B+Tree balanced 的特性，如果来了一波 value 很接近的 insert，可能导致大量的 leaf node split）
+
+![alt text](img/image-68.png)
+
+![alt text](img/image-69.png)
+
+- pointer swizzling。指针混用？。node 使用 page id 来引用 index 中的其他 node。这里需要去 page table 查别的 page 地址，才能跳转。因此优化点在于，如果 buffer pool 中有 pinned page，那么可以直接存储 raw pointer 而非 page id（在 node 中存储指针？WTF）。这样可以减少一个 page table 的查询过程。
+
+![alt text](img/image-70.png)
+
+- bulk insert。构建新 B+Tree 最快的方法是，将 key 排序然后从底向上 build tree。
+
+![alt text](img/image-71.png)
+
+- buffered updates
+- ...
+
+Obeservation
+
+- B+Tree split/merge node 的过程开销很高。最坏的情况需要重建整棵树。
+
+Write-optimized B+Tree
+
+在 inner node 的 log buffer 中存储更新操作，而非立即应用更新。也称为 B$\epsilon$-Tree。
+
+当 buffer 满时，update 操作会向树的下层 cascade down，逐层传播。
+
+![alt text](img/image-72.png)
+
+对于查询操作，可以在 log buffer 中查询到值，可能在树的上层就直接返回了。
+
+![alt text](img/image-73.png)
+
+update cascade down 的过程如下。insert 40 导致之前 buffer 中的两条记录向下传播。
+
+![alt text](img/image-74.png)
