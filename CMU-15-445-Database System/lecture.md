@@ -22,6 +22,11 @@
   - [Lecture 8 - Tree Indexes](#lecture-8---tree-indexes)
     - [B-Tree Family](#b-tree-family)
   - [Lecture 9 - Index Concurrency Control](#lecture-9---index-concurrency-control)
+    - [Latch](#latch)
+    - [Hash Table Latching](#hash-table-latching)
+    - [B+Tree Latching](#btree-latching)
+    - [Leaf Node Scan](#leaf-node-scan)
+  - [Lecture 10 - Sorting \& Aggregations Algorithms](#lecture-10---sorting--aggregations-algorithms)
 
 <!-- /TOC -->
 
@@ -1044,3 +1049,163 @@ update cascade down 的过程如下。insert 40 导致之前 buffer 中的两条
 ![alt text](img/image-74.png)
 
 ## Lecture 9 - Index Concurrency Control
+
+很多数据结构是单线程的，为了提高 CPU 利用率、hide disk IO stall，DBMS 需要考虑如果在多线程环境下使用这些数据结构。（也有单线程的 DBMS，比如 voltdb、redis、H-store）
+
+concurrency protocol：
+DBMS 保证在 shared object 上并发操作的正确性的方法。
+
+- logical correctness：一个 thread 只能看见应该看见的数据
+- physical correctness：object 的内部结构是否合理。
+
+### Latch
+
+lock 和 latch
+
+lock 用来保护逻辑事务，即一个事务执行期间其他事务无法修改其内容，事务执行期间需要持有 lock。需要能 rollback change，即事务执行发生错误时，系统能回滚这些更改。（保证事务的一致性和完整性）
+
+latch 用来在多个 worker（如 thread）之间保护内存区域或数据结构的 critical section。在操作执行期间需要持有 latch。（持有时间更短）不需要能 rollback change。
+
+![alt text](img/image-75.png)
+
+latch 的种类就只有两种，读、写。read latch 可叠加，write latch 只能一个 thread 持有。
+
+latch 设计目标：
+
+- 内存占用少
+- 无竞争时，fast execution path
+- 线程等待 latch 时间过长时，deschedule 这个线程。（超时机制？）
+- 在记录 waiting threads 时，不应该让每个 latch 单独实现自己的队列。（通过全局队列 / 共享队列集中管理？）
+
+> 不要在 user space 使用 spinklock！
+
+latch 实现：
+
+- test-and-set spinlock
+- blocking OS mutex
+- reader-writer lock
+- （更高级的）adaptive spinlock、queue-based spinlock
+
+Test-And-Set spinlock（TAS）
+
+![alt text](img/image-76.png)
+
+blocking OS mutex
+
+![alt text](img/image-77.png)
+
+reader-writer lock
+
+支持多个 reader，需要管理 read/write queue 来防止饿死。下图中，第三个 reader 因为前面有个 writer 在排队，为了防止 writer 饿死 reader 被设置等待了。
+
+![alt text](img/image-78.png)
+
+Compare-And-Swap
+
+原子操作，包含 compare 和 swap 操作。若比较相等就设置为新值，否则操作失败
+
+![alt text](img/image-79.png)
+
+### Hash Table Latching
+
+因为访问哈希表的 thread 一次只访问一个 page/slot，所以哈希表的并发控制比较好做。只有在整个表 resize 时，需要加一个 global write hatch
+
+两种 latch 设计：
+
+- page/block level 的 r/w latch
+- slot 的 r/w latch。粒度更小
+
+### B+Tree Latching
+
+B+Tree 的并发控制是为了防止两个问题：
+
+- 多个 thread 同时修改一个 node 的内容
+- 一个 thread 在 split/merge 时，另一个正在树上 traverse
+
+（按我的理解，最简单的设计是，写操作需要从根节点一路加 write latch 到 leaf node，因为可能触发 split/merge？）
+
+Latch Crabbing/Coupling
+
+latch 抓取 / 耦合。需要获取 parent 和 child 的 latch，如果在安全的情况下，可以释放 parent 的 latch。
+
+safe node：在 update 时不会 split/merge 的 node。比如没满的节点（for insert），超过半满的节点（for delete）
+
+在 r/w 时，B+Tree 这样加 latch：
+
+- 读：从 root 向下走，在 child 加 read latch 然后释放 parent latch，直到 leaf node
+- 写（insert/delete）：从 root 向下走，一路获取 write latch，在拿到 child write latch 之后判断，如果 child 为 safe，就释放祖先的 latch
+
+例如，在下面的 B+Tree delete 38
+
+![alt text](img/image-80.png)
+
+因为 B 是 half full，可能触发 merge，所以这里 B 为 unsafe
+
+![alt text](img/image-81.png)
+
+获得 D w latch 后，发现 D 是 safe 的，释放 A、B 的 latch
+
+![alt text](img/image-82.png)
+
+类似释放 D latch
+
+![alt text](img/image-83.png)
+
+再例如下面的 B+Tree 需要 insert 45
+
+![alt text](img/image-84.png)
+
+A、B 加 w latch
+
+![alt text](img/image-85.png)
+
+B 还有空位置，所以即使 D split 也 safe，释放 A
+
+![alt text](img/image-86.png)
+
+I 有位置，所以不会 split，释放 B、D
+
+![alt text](img/image-87.png)
+
+在上面例子中，B+Tree 每次写操作都需要从 root 一路加 w latch，这里是性能瓶颈。这里可以做优化。
+
+- 大部分更新操作不会引发 B+Tree 的 split/merge 操作
+- 因为上一条，可以从 root 一路 latch 时每次加 read latch，而非 write latch。（乐观）
+- 如果最后有 split/merge，那么按悲观的算法重新 reverse
+
+经过优化的 B+Tree latching：
+
+- insert/delete：从 root 一路加 read latch，对 leaf node 加 write latch。如果 leaf 是 unsafe，释放所有 latch，并从 root 一路加 write latch
+
+### Leaf Node Scan
+
+前面两种 B+Tree 的 latching 算法中，都是 top-down 获取 latch 的。为了获取 leaf node latch，很多 thread 可能在 inner node 就卡住等待了。对于一些 range query 来说还可以优化，因为 range query 只需要在 leaf node 之间跳转
+
+例如，查询小于 4 的 key
+
+![alt text](img/image-88.png)
+
+![alt text](img/image-89.png)
+
+左边的肯定是小于 4 的，所以这里往左走，获取 read latch
+
+![alt text](img/image-90.png)
+
+类似的，此时又有一个 range query。两个 thread 各拿一个 read latch，是因为拿到 child read latch 之后，parent 可以释放掉了，所以 T1 释放了 C，T2 释放了 B？
+
+![alt text](img/image-91.png)
+
+另一个例子。T2 试图给 C 加 read latch，但此时 T1 有 C 的 write latch
+
+![alt text](img/image-92.png)
+
+- latch 不支持死锁检测或者死锁避免，只能通过 coding discipline 处理（等待、超时退出、抢占？）
+- 上面的 leaf node sibling latch protocol 必须支持 no-wait mode。（因为 latch 没有死锁处理机制，所以 latch 不可用时直接失败返回？避免死锁、提高系统响应性、简化错误处理以及适应高并发环境）
+- DBMS 的数据结构必须能处理 latch 获取失败的情况
+
+总结
+
+- thread-safe 数据结构很麻烦
+- B+Tree 的并发控制方法也可以用于其他的数据结构
+
+## Lecture 10 - Sorting & Aggregations Algorithms

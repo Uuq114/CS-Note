@@ -9,7 +9,6 @@
 
 <!-- /TOC -->
 
-
 ## Schedule
 
 Spring 2024, [link](https://15445.courses.cs.cmu.edu/spring2024/schedule.html)
@@ -24,7 +23,8 @@ Spring 2024, [link](https://15445.courses.cs.cmu.edu/spring2024/schedule.html)
 - [x] 6, Memory Management
 - [x] 7, Hash Tables
 - [x] 8, Tree Indexes
-- [ ] 9, Index Concurrency Control
+- [x] 9, Index Concurrency Control
+- [ ] 10，Sorting & Aggregations Algorithms
 
 ## Project
 
