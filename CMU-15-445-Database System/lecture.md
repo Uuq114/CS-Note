@@ -27,6 +27,12 @@
     - [B+Tree Latching](#btree-latching)
     - [Leaf Node Scan](#leaf-node-scan)
   - [Lecture 10 - Sorting \& Aggregations Algorithms](#lecture-10---sorting--aggregations-algorithms)
+    - [Top-N Heap Sort](#top-n-heap-sort)
+    - [External Merge Sort](#external-merge-sort)
+    - [Aggregations](#aggregations)
+
+<!-- /TOC -->
+<!-- /TOC -->
 
 <!-- /TOC -->
 
@@ -1209,3 +1215,51 @@ I 有位置，所以不会 split，释放 B、D
 - B+Tree 的并发控制方法也可以用于其他的数据结构
 
 ## Lecture 10 - Sorting & Aggregations Algorithms
+
+本节开始介绍如何使用 DBMS 的组件执行查询。
+
+disk-oriented DBMS 中的算法，会用到 buffer pool 来在 memory-disk 之间搬数据，还会尽可能用到顺序 IO 来增强性能。
+
+Query Plan
+
+sql 语句可以看作一颗树，计算的顺序从 leaf->root，最终从 root 的计算结果就是 sql 的执行结果
+
+![alt text](img/image-93.png)
+
+为什么需要排序？（这里的 sort 应该指的是，DBMS 直接内置了常用的 tuple 排序方法）
+
+- relational model/sql 是 unsorted 的
+- 查询语句可能指定了 tuple 顺序，比如 `order by`
+- 即使查询语句没有指定排序，排序也是有用的：去重（`distinct`）、聚合（`group by`），以及将排好序的 tuple bulk load 到 B+Tree 索引也更高效一些
+
+In-memory Sorting
+
+- 如果内存大小够大，那么可以用 quicksort、timsort 等方法排序
+- 如果内存不够大，那么需要考虑读写 disk page 的开销
+
+### Top-N Heap Sort
+
+如果查询包含了 `order by` 和 `limit`，那么需要扫描找到 top n 的元素。
+
+最理想的情况是，memory 能容纳 top n 个元素，这样排序就在 memory 里面维护一个堆就行
+
+### External Merge Sort
+
+一种分治算法，就是归并排序，但是由于 memory 有限，部分数据在 disk 上。
+
+- sort：对 memory 上经过划分的数据排序，把排完序的数据写回 disk
+- merge：将已排序的数据合并
+
+sorted run
+
+![alt text](img/image-94.png)
+
+2-way external merge sort
+
+所有数据划分成 N 个 page，B 是 buffer pool 的大小
+
+![alt text](img/image-95.png)
+
+slides 48
+
+### Aggregations
