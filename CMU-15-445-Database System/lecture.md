@@ -158,7 +158,7 @@ aggregate：
 聚合操作，从 a bag of tuples 得到 single value 的操作，例如 `AVG`、`MIN`、`MAX`、`SUM`、`COUNT`.
 
 `DISTINCT`：聚合操作基本只能用在 `SELECT` 中。`AVG`、`SUM`、`COUNT` 支持 `DISTINCT` 去重。
-`GROUP BY`：将 tuple 投影到 subset，即分组。注意在 `SELECT` 输出结果中出现的非聚合列 **必须** 出现在 `GROUP BY` 中。
+`GROUP BY`：将 tuple 投影到 subset，即分组。注意在 `SELECT` 输出结果中出现的非聚合列 ** 必须 ** 出现在 `GROUP BY` 中。
 
 ```sql
 SELECT AVG(s.gpa), e.cid, s.name
@@ -500,7 +500,7 @@ NSM 总结：
 
 缺点：
 
-- 不适合 ` 需要扫描表内很多记录 ` 的查询，以及 `只需要一部分 attribute` 的查询。（无用数据读取、不同属性不利于数据压缩、NSM 随机访问模式无法预测接下来访问页面 -> 缓存命中率低）
+- 不适合 ` 需要扫描表内很多记录 ` 的查询，以及 ` 只需要一部分 attribute` 的查询。（无用数据读取、不同属性不利于数据压缩、NSM 随机访问模式无法预测接下来访问页面 -> 缓存命中率低）
 - OLAP 访问下的内存局部性表现差。（内存利用率低、缓存命中率低）
 - 同一 page 中不同的 value domain，不利于压缩
 
@@ -1260,6 +1260,98 @@ sorted run
 
 ![alt text](img/image-95.png)
 
-slides 48
+（简化的）2 路归并的外部排序算法在排序时，使用的 buffer pool size 为 3，即每次输入两个 page，输出一个 page。
+但是！即使 buffer pool size>3，这种算法还是不能有效利用多的空间。
+
+Gerneral External Merge Sort
+
+buffer pool size 为 B，相当于 B-1 路归并。每一个 pass 中，每个 page 都会被读写一遍，因此总 IO 是 $2N \star \#pass$
+
+![alt text](img/image-96.png)
+
+例子
+
+![alt text](img/image-97.png)
+
+Double Buffering Optimization
+
+系统在处理当前轮排序时，在后台 prefetch 下一轮的数据，并存储在 second buffer 中。
+
+overlap CPU and IO operation。这种方法让可用的 buffer pool size 减半，但是 response time 减少，throughput 是增加？
+
+![alt text](img/image-98.png)
+
+Comparison Optimization
+
+- code specialization：为每种 key type，提供 hardcoded version sort
+- suffix truncation：对于 long VARCHAR key 首先比较 binary prefix，如果相等就 fallback slower version（string comparison？）
+
+如果需要排序的 attribute 已经有 B+Tree index 了，可以利用 index 加速排序。遍历 leaf page 即可。
+分类：clustered/unclustered B+Tree
+
+![alt text](img/image-99.png)
+
+unclustered 的 leaf node 存储的是 page pointer，没有顺序 IO，效率较低
+
+![alt text](img/image-100.png)
 
 ### Aggregations
+
+聚合。将多个 tuple 的单个 attribute 合并为一个 scalar value。需要给多个 tuple 按照 attribute 分组。
+
+两种实现建议：sorting、Hashing
+
+sorting
+
+![alt text](img/image-101.png)
+
+hashing
+
+有些情况不需要排序，例如 `group by` 和 `distinct`。这时 hashing 就是更好的选择
+
+- 只需要去重，不需要排序。
+- 开销比排序低。
+
+DBMS 在扫描表的时候维护一个临时的哈希表，对每一条记录执行添加 / 丢弃。但是如果内存不足，也需要使用外部空间。
+
+![alt text](img/image-102.png)
+
+External Hashing Aggregate
+
+![alt text](img/image-103.png)
+
+Phase1 - partition
+
+使用哈希函数 h1 将 tuple 划分为 partition，partition 可以 spill out 到 disk 上。
+假设 buffer 的大小是 B，那么 partition 可以用 B-1 个，1 个用来输入数据。
+
+![alt text](img/image-104.png)
+
+Phase2 - rehash
+
+对 disk 上的 partition：
+
+- 把 partition 读到内存，使用哈希函数 h2 建立 in-memory hash table
+- 遍历该哈希表的每个 bucket，收集 matching tuple
+
+这种方法加沙每个 partition 能放进内存
+
+![alt text](img/image-105.png)
+
+rehash phase 中，hash table 存储的是 `(groupkey,runningval)`，这里的 runningval 和查询的 attribute 有关。例如下图里面就是 count？+gpa
+
+![alt text](img/image-106.png)
+
+下图列了一些不同查询对应的 running value。
+
+![alt text](img/image-107.png)
+
+总结
+
+- 选择 sorting 还是 hashing 很 subtle，需要针对 case 分析
+- sorting 的优化方法：
+
+- 将 IO 整合为大块来摊销成本
+- 使用 double buffer 来 overlap CPU 和 IO
+
+![alt text](img/image-108.png)
