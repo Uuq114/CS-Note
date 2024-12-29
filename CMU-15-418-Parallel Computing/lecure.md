@@ -6,8 +6,10 @@
   - [1 - Why prallelism? Why efficiency?](#1---why-prallelism-why-efficiency)
   - [2 - A Modern Multi-Core Processor](#2---a-modern-multi-core-processor)
     - [Parallel Execution](#parallel-execution)
-  - [Accessing Memory](#accessing-memory)
+    - [Accessing Memory](#accessing-memory)
+  - [3 - Parallel Programming Abstractions](#3---parallel-programming-abstractions)
 
+<!-- /TOC -->
 <!-- /TOC -->
 <!-- /TOC -->
 
@@ -104,7 +106,7 @@ GPU 的 SIMD width 一般为 8-32，SIMD 宽度会影响并行代码的写法。
   - instruction parallel
   - 由硬件在 runtime 并行执行
 
-## Accessing Memory
+### Accessing Memory
 
 - memory latency: 处理器的 memory request（例如 load/store）得到相应的时间。例如 100 cpu cycles，100 nsec
 - memory bandwidth: 内存系统向处理器提供数据的速度，例如 20GB/s
@@ -164,8 +166,62 @@ CPU 和 GPU 的内存访问架构
 如果处理器请求数据的速度太快，那么内存的带宽会成为瓶颈。对于 throughput-optimized system 来说，内存带宽是一个常见的挑战。对于一个高效的并行应用：
 
 - 尽量少从内存拿数据。1）重用同一线程之前加载的数据。2）在线程之间共享数据。
-- 提高计算的占比。arithmetic intensity是math operation和data access的比例，提高这个比例可以充分利用处理器性能
+- 提高计算的占比。arithmetic intensity 是 math operation 和 data access 的比例，提高这个比例可以充分利用处理器性能
 
 总结
 
 ![alt text](img/image-11.png)
+
+## 3 - Parallel Programming Abstractions
+
+Intel SPMD Program Compiler (ISPC)
+
+SPMD: single program multiple data
+
+以 sinx 的计算为例，在执行 ISPC code 时，会启动多个 ISPC program instance，这些 instance 是并行运行的
+
+![alt text](img/image-12.png)
+
+ISPC compiler 会生成 SIMD 实现，ISPC instance 的数量等于硬件的 SIMD width
+
+将 element 分配给 instance 有两种方式，interleaved 和 blocked
+
+![alt text](img/image-13.png)
+
+![alt text](img/image-14.png)
+
+对于 interleaved 的方式，因为每个 instance 的输入可以一次读入，所以效率会高于 block
+
+![alt text](img/image-15.png)
+
+![alt text](img/image-16.png)
+
+上面并行代码的改造方式是在循环内部，指定了每个 instance 的输入。ISPC 提供了一种更高的抽象层级，直接用 `foreach` 标记循环
+
+- `foreach` 声明了 parallel loop interation
+- ISPC 会在 instance 间分配 interation，默认的是 interleave 分配
+
+![alt text](img/image-17.png)
+
+ISPC 总结，抽象和实现：
+
+- SPMD 编程模型。抽象出来的模型包括：`programCount` 个逻辑执行流，每个执行流的标识值为 `programIndex`
+- SIMD 实现。ISPC 编译器会生成对应的指令。
+
+一个计算多个数的和的例子。左边的 `sum` 为 `uniform`，只有一份，因此左边的会在编译时报错。
+
+![alt text](img/image-18.png)
+
+从系统层级理解 pthread 并行和 ISPC：
+
+![alt text](img/image-19.png)
+
+![alt text](img/image-20.png)
+
+三种 communication model 的抽象
+
+- shared address space
+- messgae passing
+- data parallel
+
+slides03- 27
