@@ -8,7 +8,13 @@
     - [Parallel Execution](#parallel-execution)
     - [Accessing Memory](#accessing-memory)
   - [3 - Parallel Programming Abstractions](#3---parallel-programming-abstractions)
+    - [Shared address space model](#shared-address-space-model)
+    - [Message passing model](#message-passing-model)
+    - [Data-parallel model](#data-parallel-model)
 
+<!-- /TOC -->
+<!-- /TOC -->
+<!-- /TOC -->
 <!-- /TOC -->
 <!-- /TOC -->
 <!-- /TOC -->
@@ -224,4 +230,72 @@ ISPC 总结，抽象和实现：
 - messgae passing
 - data parallel
 
-slides03- 27
+### Shared address space model
+
+程序可以看成是 instruction sequence。内存可以看成是 array of bytes，包含 address 和对应的 value。
+
+![alt text](img/image-21.png)
+
+thread 需要 sync 共享变量的读写操作，sync primitive 也是共享变量，例如 lock
+
+由于 thread 之间可能会 interleave 执行，因此在每个 thread 执行 load-add-store 过程中，如果发生 interleave，会导致最后的结果不符合预期，因此某些 instruction 组合需要被 atomic 执行。
+
+保证 atomicity 的方法
+
+![alt text](img/image-22.png)
+
+shared memory model 硬件实现：任意处理器可以直接访问任意位置的 memory
+
+![alt text](img/image-23.png)
+
+interconnect 方式有很多了，比如 shared bus、crossbar、ring、multi-stage network
+
+Non-Uniform Memory Access (NUMA)
+
+现象：不同 core 访问相同 memory location 的 latency 可能不一样，下图中 core 5-8 访问 X 位置
+
+![alt text](img/image-24.png)
+
+总结
+
+![alt text](img/image-25.png)
+
+### Message passing model
+
+每个 thread 的 address space 是私有的，通过发送 / 接收消息来交流
+
+![alt text](img/image-26.png)
+
+### Data-parallel model
+
+这块只看 slides 不是很好理解，我的理解是 data parallel 是指类似 python `map` 函数那样批量操作？
+
+![alt text](img/image-27.png)
+
+Map
+
+以其他函数作为参数的高阶函数，可以对 sequence 操作。可以对 sequence 的所有元素应用 side-effect free 的函数 f。
+
+因为函数 f 是无副作用的，因此及时 reorder/parallelize map 的顺序，输出也是不变的
+
+对 map 的一些优化：
+
+- 重组代码（map fusion）：对于一些连续的 map（例如 a->b->c），可以 reorg code 来减少 memory load/store
+- prefetch：在处理 input sequence 时，prefetch 下一个元素来 hide memory latency
+
+![alt text](img/image-28.png)
+
+gather instruction
+
+按照输入的位置，批量提取内存数据
+
+![alt text](img/image-29.png)
+
+总结
+
+- 基本思想：将函数 map 到 data collection
+- 有很多其他的 parallel operator：gather、scatter、reduce、scan、shift 等
+- 这门课中会有很多需要用 data parallel primitive 思考的内容，但是很多现代的 data parallel language 并没有强制实现 data parallel primitive。例如 ISPC、CUDA 都在设计时选择命令式（imperative）的，并没有选择函数式
+- 抽象模型和硬件实现的对应关系
+
+![alt text](img/image-30.png)
