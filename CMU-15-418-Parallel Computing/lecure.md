@@ -11,6 +11,7 @@
     - [Shared address space model](#shared-address-space-model)
     - [Message passing model](#message-passing-model)
     - [Data-parallel model](#data-parallel-model)
+  - [4 - Parallel Programming Basics](#4---parallel-programming-basics)
 
 <!-- /TOC -->
 <!-- /TOC -->
@@ -299,3 +300,26 @@ gather instruction
 - 抽象模型和硬件实现的对应关系
 
 ![alt text](img/image-30.png)
+
+## 4 - Parallel Programming Basics
+
+编写并行程序的过程：
+
+- 确定哪些部分可以并行处理
+- 分配工作、数据
+- 处理 data access、communication、synchronization 等
+- 一般的目标是更大的加速比
+
+在第一步的分解问题中，关键是找到程序中的依赖 / 非依赖关系
+
+Amadahl law：依赖会限制加速比
+
+![alt text](img/image-35.png)
+
+定律表示，系统整体的性能提升受到不可并行部分（串行）部分的限制。整个系统最大的加速比是： 1 / 串行部分比例
+
+![alt text](img/image-36.png)
+
+从图中可以看出来，即使串行部分比例很小，最终的加速比也是被限制了
+
+slides 04-13
