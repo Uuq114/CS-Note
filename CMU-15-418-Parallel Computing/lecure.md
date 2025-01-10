@@ -380,6 +380,35 @@ data parallel
 
 shared address space
 
+两种 sync primitive：lock、barrier
+
 ![alt text](img/image-47.png)
 
-s4p38
+shared address space solver 包括：
+全局的变量、每个 thread 都要执行的函数，下图用 lock 来保护修改 diff 的操作的原子性。
+
+一个可能的性能瓶颈是，每次循环都要用一次 lock。正确的方法是先在本地保存临时值，最后用一次 lock
+
+![alt text](img/image-49.png)
+
+barrier
+
+![alt text](img/image-50.png)
+
+为什么有三个 barrier：
+
+- 第一个是初始化的
+- 每个 thread 都收敛
+- 全部 thread 退出
+
+![alt text](img/image-51.png)
+
+优化代码，只用一个 barrier。优化思路：
+
+- 使用临时变量，减少依赖（用存储换依赖）
+
+![alt text](img/image-52.png)
+
+两个编程模型的比较：data parallel、shared address space
+
+![alt text](img/image-53.png)
