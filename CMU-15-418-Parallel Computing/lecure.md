@@ -322,4 +322,64 @@ Amadahl law：依赖会限制加速比
 
 从图中可以看出来，即使串行部分比例很小，最终的加速比也是被限制了
 
-slides 04-13
+分配工作的时候，可以直接分配数据（比如 for 循环中划分数据），也可以用 ISPC task 分配。运行过程中，ISPC task 会动态分配给 worker thread
+
+![alt text](img/image-37.png)
+
+Orchestration
+
+- worker thread 合作完成任务的过程，涉及任务调度、同步等操作。
+- 目标是减少开销：减少通信 / 同步的开销，保持 data locality
+
+![alt text](img/image-38.png)
+
+Mapping
+
+- 将 worker thread map 到 hardware execution unit
+- 可以被 OS/compiler / 硬件执行 map
+- 将 related thread 放在相同的处理器可以增加 locality，将 unrelated thread（一个是带宽受限，一个是计算受限）放在同一个处理器可以增加机器利用率
+
+一个优化 Gauss-Seidel 迭代法的例子：
+
+矩阵中每个元素需要通过周围的四个元素计算
+
+![alt text](img/image-39.png)
+
+寻找依赖关系，发现每个元素依赖的是：上面的元素、左边的元素
+
+![alt text](img/image-40.png)
+
+发现每个对角线上的元素彼此没有依赖，可以并行计算，但是这样有一些问题
+
+![alt text](img/image-41.png)
+
+上面的优化方法不够好，因此提出新的优化方法，需要用到具体领域知识（在并行编程中很常见）
+
+![alt text](img/image-42.png)
+
+新方法。先并行更新红色节点，再并行更新黑色节点，轮流计算直到收敛
+
+![alt text](img/image-43.png)
+
+具体到工作分配部分，有两种分配方式 blocked 和 interleaved。
+这里说两种方法都可以，具体取决于系统实现。（这里 blocked 方法 locality 较好，负载可能不均匀；interleaved 方法负载均衡较好，通信开销较小？）
+
+![alt text](img/image-44.png)
+
+每轮计算之后，更新的值需要同步，blocked 需要同步的数据更少
+
+![alt text](img/image-45.png)
+
+![alt text](img/image-46.png)
+
+三种实现方式：data parallel、shared address space、message passing
+
+data parallel
+
+![alt text](img/image-48.png)
+
+shared address space
+
+![alt text](img/image-47.png)
+
+s4p38
