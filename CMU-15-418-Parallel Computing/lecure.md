@@ -12,7 +12,9 @@
     - [Message passing model](#message-passing-model)
     - [Data-parallel model](#data-parallel-model)
   - [4 - Parallel Programming Basics](#4---parallel-programming-basics)
+  - [5 - Performance Optimization Part 1: Work Distribution and Scheduling](#5---performance-optimization-part-1-work-distribution-and-scheduling)
 
+<!-- /TOC -->
 <!-- /TOC -->
 <!-- /TOC -->
 <!-- /TOC -->
@@ -409,6 +411,20 @@ barrier
 
 ![alt text](img/image-52.png)
 
-两个编程模型的比较：data parallel、shared address space
+两个编程模型的比较：data parallel、shared address space。
+
+两个模型包括 synchronization 和 communication 的步骤，但是具体的形式不同。
+对于 data parallel，synchronization 的形式是：并行执行结构完成，例如 `forall` 这种会等待所有 worker 都完成。
+communication 的形式则是：通过共享变量的 load/store 实现，或者其他高级的原语例如 `reduce`。
+
+对于 shared address space，synchronization 的形式是：通过锁这种共享变量实现 mutual exclusion。
+communication 的形式则是：通过共享变量的 load/store，和前面类似。
 
 ![alt text](img/image-53.png)
+
+总结
+
+- Amdahl's law。最大加速比取决于程序中顺序执行部分的占比。
+- 编写并行程序的要点。将整体工作拆分成互不依赖的部分，交给多个worker执行，同时协调这些worker，以及这些操作在硬件上的mapping
+
+## 5 - Performance Optimization Part 1: Work Distribution and Scheduling
