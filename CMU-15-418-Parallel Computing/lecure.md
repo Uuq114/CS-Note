@@ -552,10 +552,22 @@ Cilk 采用线程池的形式，线程池的数量等于 machine core 数目，�
 
 两种 steal 方法（child stealing 和 continuation stealing）我看下来感觉没什么区别，就是 BFS/DFS 的区别，不知道在 locality 上有没有区别？
 
+Cilk Plus runtime 用的应该是 continuation stealing，init thread 会 run spawned child
+
 ![alt text](img/image-67.png)
 
 ![alt text](img/image-68.png)
 
-Clik 使用 greedy join scheduling policy。启动spawn worker的
+Cilk 的 sync 实现
+
+stalling join：负责 fork 的 thread 负责 sync，因此它会等待所有创建的 thread 结束
+
+![alt text](img/image-70.png)
+
+greedy sync policy：每个 thread 在 idle 时都会 steal work，最后一个到达 join point 的 thread 会继续执行 continuation part
+
+![alt text](img/image-71.png)
+
+Cilk 的 sync 使用 greedy join scheduling policy。启动 spawn worker 的
 
 ![alt text](img/image-69.png)
