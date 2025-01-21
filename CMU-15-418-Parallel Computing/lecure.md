@@ -21,6 +21,7 @@
 <!-- /TOC -->
 <!-- /TOC -->
 <!-- /TOC -->
+<!-- /TOC -->
 
 ## 1 - Why prallelism? Why efficiency?
 
@@ -438,7 +439,7 @@ communication 的形式则是：通过共享变量的 load/store，和前面类�
 与之对应的，优化并行程序有几个 tip：
 
 - 多次迭代，每次用最简单的方法，每次迭代之后检查性能并继续优化
-- xxx
+- balance workload：不平衡的负载会严重影响加速比（当一个 worker 负载太高时，就有 parallel program runtime 变成 serial execution 了）
 
 Static assignment
 
@@ -491,4 +492,70 @@ Smarter task scheduling
 
 ![alt text](img/image-59.png)
 
-slides5 p17/64
+单个 work queue 可能有 sync 开销太高的问题，可以使用多个 queue（数量等于 worker thread 数量）来减少 sync 开销。
+每个 worker 可以从自己的 queue 拿任务，向自己的 queue 加任务。当自己的 queue 空了，可以从其他 queue steal。（Golang GMP 模型使用了类似思想）
+
+![alt text](img/image-60.png)
+
+task queue 中的 task 可以有依赖关系。依赖关系在 enqueue task 的时候通过函数参数传入和表示
+
+![alt text](img/image-61.png)
+
+总结
+
+- 要解决 workload balance 的问题，终极目标是让所有 worker 都在工作，没有 idle 的。为了低成本实现这个目的，需要减少计算开销（scheduling/assignment）、sync 开销
+- 选择 static assignment 还是 dynamic assignment？如果先验知识越多，那么选 static，因为这样能减少 imbalance 和 task 管理开销
+
+常见的并行编程模式：
+
+- data parallel。在多个数据上执行相同的操作，例如 ISPC、高阶函数 map、OpenMP、CUDA
+- 显式使用 thread 并行。类似：创建 thread->join
+
+Cilk Plus
+
+一种并行编程框架，是 C++ 的扩展，提供几个函数：
+
+- `cilk_spawn foo(args)`，类似 fork，会创建一个新的逻辑控制流。和普通函数调用区别是，caller 会和 `foo` 同时异步执行
+- `cilk_sync`，类似 join，在所有 spawned call 结束之后返回。在包含 `cilk_spawn` 的函数中，结尾会有个隐式的 `cilk_sync`
+
+![alt text](img/image-62.png)
+
+Cilk 抽象 - 实现
+
+- `cilk_spawn` 没有说明新的 call 调度的时间和方式
+- `cilk_sync` 指定所有 spawned call 结束再返回
+
+![alt text](img/image-63.png)
+
+一些 tips。
+
+- 任务量至少要达到机器的处理资源
+- independent work 越多越好，因为这样 workload balance 更好。一个合适的 parallel slack 比例是：independent work/machine capacity=8
+- 太多的 independent work 会让管理开销更高
+
+![alt text](img/image-64.png)
+
+Cilk 实现方式
+
+设想一种简单的方式。将 `cilk_spawn`、`cilk_sync` 替换成线程调度的 `pthread_create`、`pthread_join` 函数。这样可能带来的问题：
+
+- spawn call 开销很大
+- 可能会创建很多的线程，超过 core 数量。导致 context 切换开销大、cache 局部性差
+
+Cilk 采用线程池的形式，线程池的数量等于 machine core 数目，线程池在程序启动时创建
+
+![alt text](img/image-65.png)
+
+前面的 worker queue 让 spawned call 或者 continuation 可以被 steal。下图左边有一个例子，calling thread 是选择 child stealing 还是 continuation stealing？
+
+![alt text](img/image-66.png)
+
+两种 steal 方法（child stealing 和 continuation stealing）我看下来感觉没什么区别，就是 BFS/DFS 的区别，不知道在 locality 上有没有区别？
+
+![alt text](img/image-67.png)
+
+![alt text](img/image-68.png)
+
+Clik 使用 greedy join scheduling policy。启动spawn worker的
+
+![alt text](img/image-69.png)
