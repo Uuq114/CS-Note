@@ -13,6 +13,7 @@
     - [Data-parallel model](#data-parallel-model)
   - [4 - Parallel Programming Basics](#4---parallel-programming-basics)
   - [5 - Performance Optimization Part 1: Work Distribution and Scheduling](#5---performance-optimization-part-1-work-distribution-and-scheduling)
+  - [6 - Performance Optimization Part 2: Locality, Communication, and Contention](#6---performance-optimization-part-2-locality-communication-and-contention)
 
 <!-- /TOC -->
 <!-- /TOC -->
@@ -571,3 +572,29 @@ greedy sync policy：每个 thread 在 idle 时都会 steal work，最后一个�
 Cilk 的 sync 使用 greedy join scheduling policy。启动 spawn worker 的
 
 ![alt text](img/image-69.png)
+
+## 6 - Performance Optimization Part 2: Locality, Communication, and Contention
+
+还是以这个矩阵迭代为例子，假设将整个矩阵分成 4 个，那么相邻 worker 之间需要交换行。
+
+![alt text](img/image-72.png)
+
+![alt text](img/image-73.png)
+
+整个程序看起来是这样：
+
+![alt text](img/image-74.png)
+
+synchronous send/recv：阻塞的 send/recv，两个函数都是在收到对面 ack 之后返回
+
+在前面的程序中，如果用的是 sync read/recv，那么会产生 deadlock。
+
+![alt text](img/image-75.png)
+
+为了解决这个问题，需要修改相邻 worker 传输数据的部分。将奇数、偶数行的 send、recv 操作对应起来。
+
+![alt text](img/image-76.png)
+
+Non-blocking asynchronous send/recv：两个函数都是立即返回。send 调用之后无法再修改 buffer 内容，send/recv 调用之后可以用 `checksend()`、`checkrecv()` 函数查询 send/recv 状态。
+
+slide6 p15/91
