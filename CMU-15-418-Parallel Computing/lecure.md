@@ -23,6 +23,7 @@
 <!-- /TOC -->
 <!-- /TOC -->
 <!-- /TOC -->
+<!-- /TOC -->
 
 ## 1 - Why prallelism? Why efficiency?
 
@@ -597,4 +598,30 @@ synchronous send/recv：阻塞的 send/recv，两个函数都是在收到对面 
 
 Non-blocking asynchronous send/recv：两个函数都是立即返回。send 调用之后无法再修改 buffer 内容，send/recv 调用之后可以用 `checksend()`、`checkrecv()` 函数查询 send/recv 状态。
 
-slide6 p15/91
+并行系统中的 memory hierarchy 视角：多个 level 之间的 communication，communication 不局限在节点之间的 message 交换
+
+![alt text](img/image-77.png)
+
+cache 的结构：
+CPU cache 由多个 cache line 组成，cache line 是数据的最小存储单元。
+下图的例子 cache capacity 是 32 字节，cache line 大小是 16 字节
+
+![alt text](img/image-78.png)
+
+Pipelining
+
+流水线。通过将指令执行过程分解成多个阶段，使多条指令可以在不同阶段并行处理，从而提高吞吐量。
+
+下图中，分了四个 instruction pipeline（IF 取指，ID 译码，EX 执行，WB 写回），每个 pipeline 需要 1 cycle 完成。
+
+![alt text](img/image-79.png)
+
+以message 为例的pipeline
+
+![alt text](img/image-80.png)
+
+![alt text](img/image-81.png)
+
+CPU-memory communication pipeline
+
+![alt text](img/image-82.png)
