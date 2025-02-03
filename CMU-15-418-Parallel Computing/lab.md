@@ -1,21 +1,12 @@
 # Lab Notes
 
-CS149 Parallel Computing Handout: <https://gfxcourses.stanford.edu/cs149/fall21>
+<!-- TOC -->
 
-## Assignment 1: Analyzing Parallel Program Performance on a Quad-Core CPU
+- [Lab Notes](#lab-notes)
+    - [Assignment 1: Analyzing Parallel Program Performance on a Quad-Core CPU](#assignment-1-analyzing-parallel-program-performance-on-a-quad-core-cpu)
+        - [Program 1](#program-1)
 
-### Program 1
-
-1-8 thread下view 1的加速比：
-
-![alt text](img/image-32.png)
-
-1-8 thread下view 2的加速比：
-
-![alt text](img/image-31.png)
-
-总体来说，thread数目越大加速比越大。但是在view1中，thread为3时出现明显的性能下降，可能是和计算分配方式有关，中间的部分计算时间较长，拉低了整体加速比。
-
+<!-- /TOC -->
 ![alt text](img/image-33.png)
 
 确实是thread 1比较慢

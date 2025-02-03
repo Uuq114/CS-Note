@@ -616,12 +616,120 @@ Pipelining
 
 ![alt text](img/image-79.png)
 
-以message 为例的pipeline
+以 message 为例的 pipeline
 
 ![alt text](img/image-80.png)
 
+这里因为 buffer 只能存两个 message，因此从 msg 2 开始，新的 msg 需要等 phase 2（send data over slow link）结束才能开始。
+导致 sender stall
+
 ![alt text](img/image-81.png)
 
-CPU-memory communication pipeline
+CPU-memory communication pipeline。类比前面的：sender-slow link-fast link-recver。这里 cache-memory 相当于 slow link
 
 ![alt text](img/image-82.png)
+
+图中模拟的是 size 为 1 的 memory req buffer。由于 cache-memory 为 slow link，load miss 1 的 mem req 需要等上一个 mem req 传输完成，导致 load miss2 的 load instruction stall
+
+这里我有点疑惑：phase 1 为 processor 发出读内存到寄存器的指令，应该要先 lookup cache 才能确定是否真的要从内存读，所以 stall 应该和 load miss 1 一样，在 phase2（cache lookup）的结束？
+
+问了下 AI，说是 load 之前会检查资源预留，如果资源不够（这里就是 buffer 满了），那么就不会 load。另一个原因是，cache lookup 需要时间，且一般是多个 cycle，如果在 lookup 之后再决定是否占用 buffer 会显著增加 pipeline 延迟。以及，多个 load 同时未命中的话，还可能导致死锁。
+
+（图里 load miss 1 后面也是 add，而非 load）
+
+![alt text](img/image-83.png)
+
+两种 communication 类型：inherent/artifactual
+
+现代处理器计算能力普遍较强，因此优化程序的一大关键是减少程序中的通信，增加程序的 $\frac{计算}{通信}$ 指数
+
+- inherent communication：并行程序中必须用到的 communication，例如矩阵迭代计算中 block 之间交换 row 的通信部分。
+- artifactual communication：其他所有的 communication。为了执行 assignment 引入的，需要在 processor 之间传输的信息。系统实现细节中的 communication
+
+合理划分负载可以减少 inherent communication
+
+![alt text](img/image-84.png)
+
+![alt text](img/image-85.png)
+
+artifactual communication 的例子：
+
+- data transfer 有最小粒度，例如要传 4 byte 的 float，也需要传一整个 64 byte 的 cache line
+- 系统操作引入的额外 communication。例如，程序需要写 16 个连续的 4 byte float，如果 cache miss 了，需要先从内存加载对应数据到 cache line，再将数据写入 cache line。这里就有两倍的开销
+- 缓存大小有限。例如，缓存比较小时可能经常 evict，从而需要多次将相同的数据传到 processor
+
+![alt text](img/image-86.png)
+
+一些减少通信量，提高 locality 的方法：
+
+- change traversal order
+- fuse loop
+- share data
+
+![alt text](img/image-87.png)
+
+![alt text](img/image-88.png)
+
+![alt text](img/image-89.png)
+
+artifactual communication 和 communication granularity 有关，对 grid 的上下两边局部性很好，但是对左右两边的局部性不好。
+
+结论：artifactual communication 随 cache line size 增加而增加
+
+![alt text](img/image-90.png)
+
+blocked data layout，block 内元素的地址是连续的，因此 cache line 不会横跨 block 的边界
+
+![alt text](img/image-91.png)
+
+![alt text](img/image-92.png)
+
+Contention
+
+shared resource 的请求量超过吞吐量上限
+
+![alt text](img/image-93.png)
+
+前面提到的 distributed work queue 就可以减少 contention（我的理解是，subtask 减少了 granularity 且有一个预分配的 queue，同时 worker 还可以 steal，从而减少 stall）
+
+总结
+
+- 减少 sender/recver 的通信开销：更少的 msg，更大的 msg，减少平均开销
+- 减少通信延迟：改写应用，利用 locality
+- 减少 contention：复制资源（local copy / 细粒度锁）；错开共享资源的访问
+- 增加 communication/computation overlap：更多的并发。改写应用使用 async；pipeline/multi-threading/pre-fetching/out-of-order exec
+
+![alt text](img/image-94.png)
+
+优化程序的策略：
+
+- 尝试最简单的并行方法，再测试性能，比较和 best-case 场景的差距
+- 检查程序的瓶颈在哪：计算 / 内存带宽、内存延迟 / 同步开销
+- 调整程序的 arithmetic intensity
+
+![alt text](img/image-95.png)
+
+处理器记录的 performance counter 会记录一些事件（完成的指令、L2/L3 cache hit/miss，从内存读的字节数），可作为优化的参考
+
+![alt text](img/image-96.png)
+
+scaling：在计算加速比时，考虑问题的规模
+
+- 如果问题规模太小，可能在单核上跑的够快了，那这时 scale processor number 不会有好效果。前面 grid 程序的 intensity 就是 $\frac{N}{\sqrt{P}}$，N 太小没用
+- 如果问题规模太大，且数据量没超过硬件容量，那么可能出现 super-linear 的加速比
+
+![alt text](img/image-97.png)
+
+scale problem 时应当考虑的：
+
+- 限制条件。固定数据规模、固定内存、等等
+
+![alt text](img/image-98.png)
+
+- problem scaling：问题规模不变，关注的是更快计算问题。$speedup=\frac{time\ 1\ processor}{time\ P\ processor}$
+- time-constrained scaling：固定时间，关注的是解决更多问题，$speedup=\frac{work\ done\ by\ P\ processor}{work\ done\ by\ 1\ processor}$。例如 3d 图像的渲染、web 网站、量化
+- memory-constrained scaling：在内存不溢出情况下，计算更大的问题。每个processor的内存量是固定的
+
+![alt text](img/image-99.png)
+
+![alt text](img/image-100.png)
