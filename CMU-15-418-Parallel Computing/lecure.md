@@ -14,7 +14,9 @@
   - [4 - Parallel Programming Basics](#4---parallel-programming-basics)
   - [5 - Performance Optimization Part 1: Work Distribution and Scheduling](#5---performance-optimization-part-1-work-distribution-and-scheduling)
   - [6 - Performance Optimization Part 2: Locality, Communication, and Contention](#6---performance-optimization-part-2-locality-communication-and-contention)
+  - [7 - GPU Architecture \& CUDA Programming](#7---gpu-architecture--cuda-programming)
 
+<!-- /TOC -->
 <!-- /TOC -->
 <!-- /TOC -->
 <!-- /TOC -->
@@ -728,8 +730,123 @@ scale problem 时应当考虑的：
 
 - problem scaling：问题规模不变，关注的是更快计算问题。$speedup=\frac{time\ 1\ processor}{time\ P\ processor}$
 - time-constrained scaling：固定时间，关注的是解决更多问题，$speedup=\frac{work\ done\ by\ P\ processor}{work\ done\ by\ 1\ processor}$。例如 3d 图像的渲染、web 网站、量化
-- memory-constrained scaling：在内存不溢出情况下，计算更大的问题。每个processor的内存量是固定的
+- memory-constrained scaling：在内存不溢出情况下，计算更大的问题。每个 processor 的内存量是固定的
 
 ![alt text](img/image-99.png)
 
 ![alt text](img/image-100.png)
+
+## 7 - GPU Architecture & CUDA Programming
+
+GPU 基本架构：
+
+- 多核心
+- 每个核心内核进行 SIMD 操作
+- 每个核心内可进行多线程
+
+![alt text](img/image-101.png)
+
+渲染图片的步骤：
+
+- 输入：3d 空间内的多个点的坐标（xyz）
+- 摄像机的位置和朝向，用于计算顶点在屏幕上的投影位置
+- 将点分组成 primitive（图元，图形渲染的基本形状，比如三角形）
+- 为每个和 primitive 重叠的像素生成 fragment。（primitive 和哪些 pixel 重叠，就是 fragment）
+- 对每个 fragment，根据表面材料、光照等计算颜色
+- 将离摄像头最近的 fragment 的颜色输出到最终 image。（一个 pixel 可能涉及多个 fragment，这时需要决定哪些颜色是最终显示的）
+
+![alt text](img/image-102.png)
+
+graphic shading language 提供了材料、光照的控制方法。程序员可以写 shader 来定义渲染管线的部分阶段：vertex processing，fragment processing
+
+fragment shader 是对 input stream 都要调用的函数，GPU 在处理这种对大量数据（streams of vertices/fragments/pixels）的相同计算（shader 程序）有并行优势
+
+CUDA 语言
+
+- 之前的 GPU 只支持图形渲染管线，如果要进行其他计算，需要将程序翻译成图形渲染
+- CUDA 提供了和 CPU 类似的接口，例如内存分配、数据拷贝等
+
+CUDA thread 提供的抽象和 pthread 类似，能控制 logical thread，但是具体实现上有很大区别
+
+CUDA 的程序使用 block 来管理 thread，类似三维数组（block-x-y）
+
+![alt text](img/image-103.png)
+
+CUDA 基本语法：
+
+- Host code：作为 CPU 上的 C 代码部分运行，顺序执行。会启动很多 CUDA thread（grid），所有 thread 结束时返回
+- CUDA device code：GPU 上运行的 kernel 函数（`__global__` 表示是 CUDA kernel func）。为 SPMD 执行（single program multiple data）
+
+![alt text](img/image-104.png)
+
+host/device code 是分开写的。和图形渲染不同，kernel launch 并没有显式调用 `map(kernel, collection)` 的过程
+
+![alt text](img/image-105.png)
+
+CUDA 内存模型，包括 host 和 device 的 memory address space
+
+![alt text](img/image-106.png)
+
+在 host/device 之间搬数据，使用函数 `cudaMemcpy`
+
+```c++
+cudaError_t cudaMemcpy(void* dst, const void* src, size_t count, enum cudaMemcpyKind kind)
+```
+
+![alt text](img/image-107.png)
+
+CUDA device memory model
+
+kernel 可见的内存地址空间有三种：per-thread private、per-block shared、global
+
+![alt text](img/image-108.png)
+
+下面是一个 1 维卷积的例子，用于介绍 CUDA 程序的编写和优化
+
+![alt text](img/image-109.png)
+
+版本 1 写的很简单，每次都是从 global 读数据，计算完再写回 global。这样的性能肯定不高
+
+![alt text](img/image-110.png)
+
+版本 2 中，首先将 global 中的 input 复制到 per-block shared（block 中 thread 一起完成），然后是 block barrier，再计算结果并写回 global
+
+其中，`support` 大小是 130，一个 block 是 128，计算第 128 个结果需要隔壁 block 的两个元素，这里也提前复制过来了
+
+![alt text](img/image-111.png)
+
+CUDA 同步结构：block-level、atomic 函数、host/device level
+
+![alt text](img/image-112.png)
+
+CUDA 抽象总结：
+
+- thread hierarchy：两级，block-thread array
+- 分布式的地址空间：host/device memory，device memory 的三种类型（private、shared、global）
+- barrier sync
+- atomic primitive
+
+CUDA thread-block assignment
+
+GPU 会按照程序设定的资源需求（每个 block 的 thread 数目、shared/local mem），将 block 分配给 core。（每个 block 之间需要是没有依赖的）
+
+![alt text](img/image-113.png)
+
+![alt text](img/image-114.png)
+
+warp 是线程调度的基本单位，由一组连续的线程组成，这些线程会在硬件上执行相同的指令。下图中，warp 包含 32 thread，一个 256 CUDA thread 的 block 就会 map 到 8 个 warp
+
+如果一个 warp 中的 thread 的指令相同，那么可以以 SIMD 方式执行。如果指令有分歧，那么性能会下降
+
+![alt text](img/image-115.png)
+
+V100 结构
+
+![alt text](img/image-116.png)
+
+在运行阶段，SM 会在每个 clock：
+
+- 每个 subcore 会检查自己队列中的 runnable warp
+- 每个 subcore 运行 warp 中的 CUDA thread
+
+![alt text](img/image-117.png)
