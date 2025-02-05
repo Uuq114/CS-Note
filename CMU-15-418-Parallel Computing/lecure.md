@@ -17,15 +17,6 @@
   - [7 - GPU Architecture \& CUDA Programming](#7---gpu-architecture--cuda-programming)
 
 <!-- /TOC -->
-<!-- /TOC -->
-<!-- /TOC -->
-<!-- /TOC -->
-<!-- /TOC -->
-<!-- /TOC -->
-<!-- /TOC -->
-<!-- /TOC -->
-<!-- /TOC -->
-<!-- /TOC -->
 
 ## 1 - Why prallelism? Why efficiency?
 
@@ -850,3 +841,37 @@ V100 结构
 - 每个 subcore 运行 warp 中的 CUDA thread
 
 ![alt text](img/image-117.png)
+
+CUDA semantics
+
+- block threads 是并行运行的，如果一个 block thread 是 runnable，那么它最终会运行（没有死锁）。即 block 内的 thread 可能是有依赖的，例如 block barrier
+- 因此 gpu task scheduler 在分配工作时，不会出现这种情况：一个 block 有 256 个 thread，0-127 先用掉所有 warp 运行完，再运行 128-255 号 thread
+
+CUDA 抽象的实现
+
+- thread block 可以被系统以任意顺序调度（block 之间没有依赖、逻辑并行）
+- 同一 block 的 CUDA thread 是并行运行的，这些 thread 是 concurrent and cooperating workers
+- thread block 的所有 warp 会被调度到同一个 SM，可以提供高带宽、加速共享内存变量访问
+- 当 block 中所有 thread 结束，block 占用的 warp 和内存被释放，用于下一个 block 使用
+
+注意，前面说的 “block 之间没有依赖” 并不是强制要求，只是说 CUDA 有用任意顺序调度 block 的权利。
+
+Persistent Thread 是一种 CUDA 优化技巧，能够用于降低 GPU 的 kernel launch latency，降低 Host-Device 通讯所带来的额外开销。
+
+本质上，Persistent Thread 的核心思想就是让同一段 kernel 代码一直运行在 GPU 设备上，利用 Unified Virtual Addressing（UVA） 或者 zero-copy memory 来实现以极低的开销与 GPU 通信，将 workload 给 offload 到计算设备上不断轮询计算任务的 kernel，相当于把外部计算设备当做一个 CPU 可见的线程池。相比之下，通过 kernel launch 的方式来加载程序（正常的 Host-Device 交互），需要走一遍完整的从上层 runtime 一直到 PCIE driver 的流程，这个开销要大得多。
+
+详细的可以参考：<https://www.blog.finaltheory.me/research/CUDA-Persist-Thread.html>
+
+![alt text](img/image-118.png)
+
+CUDA 总结：
+
+- execution semantics
+  - cuda 是 data-parallel model，需要将问题划分成 block，然后系统会将 block 调度到 core 上
+  - block threads 会并行运行，in SPMD manner
+- memory semantics
+  - host/device memory
+  - device memory 分为：thread local、block shared、global
+- 实现细节
+  - block 中的 thread 会被调度到同一个 GPU core，从而可以快速访问 shared memory
+  - block threads 按照 warp 分组，执行 SIMD 操作
