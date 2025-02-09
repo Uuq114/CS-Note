@@ -15,6 +15,7 @@
   - [5 - Performance Optimization Part 1: Work Distribution and Scheduling](#5---performance-optimization-part-1-work-distribution-and-scheduling)
   - [6 - Performance Optimization Part 2: Locality, Communication, and Contention](#6---performance-optimization-part-2-locality-communication-and-contention)
   - [7 - GPU Architecture \& CUDA Programming](#7---gpu-architecture--cuda-programming)
+  - [8 - Data-Parallel Thinking](#8---data-parallel-thinking)
 
 <!-- /TOC -->
 
@@ -875,3 +876,6 @@ CUDA 总结：
 - 实现细节
   - block 中的 thread 会被调度到同一个 GPU core，从而可以快速访问 shared memory
   - block threads 按照 warp 分组，执行 SIMD 操作
+
+## 8 - Data-Parallel Thinking
+
