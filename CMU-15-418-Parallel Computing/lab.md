@@ -8,6 +8,10 @@
     - [Program 2: Vectorizing Code Using SIMD Intrinsics (20 points)](#program-2-vectorizing-code-using-simd-intrinsics-20-points)
     - [Program 3: Parallel Fractal Generation Using ISPC](#program-3-parallel-fractal-generation-using-ispc)
     - [Program 4: Iterative `sqrt`](#program-4-iterative-sqrt)
+    - [Program 5: BLAS `saxpy`](#program-5-blas-saxpy)
+
+<!-- /TOC -->
+    - [Program 5: BLAS saxpy](#program-5-blas-saxpy)
 
 <!-- /TOC -->
 <!-- /TOC -->
@@ -56,3 +60,8 @@ Part 2
 1. 加速比为：3.79（ISPC）、43.91（ISPC task）。
 2. 我把输入数组的值全部换成了 `2.999f`，一方面这个输入会让 serial 计算时间最长，另一方面 ISPC SIMD 也不会提前退出造成分歧。最后的加速比为：4.26（ISPC）、37.37（ISPC task）
 3. 输入设置为：`2.999f`（index 为 8 的倍数）、`1.f`（其他元素）。一方面可以减少 serial 的计算时间，另一方面让 SIMD 出现分歧。最后的加速比为：0.61（ISPC）、5.72（ISPC task）
+
+### Program 5: BLAS `saxpy`
+
+1. task 带来的加速比为 1.95。该程序涉及很多内存读写，因此内存带宽是瓶颈
+2. 读取写入result需要两次内存访问，读取xy需要两次，所以总内存访问次数是4n
