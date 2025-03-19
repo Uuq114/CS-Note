@@ -14,7 +14,9 @@
     - [Part 1: CUDA Warm-Up 1: SAXPY (5 pts)](#part-1-cuda-warm-up-1-saxpy-5-pts)
     - [Part 2: CUDA Warm-Up 2: Parallel Prefix-Sum (10 pts)](#part-2-cuda-warm-up-2-parallel-prefix-sum-10-pts)
     - [Part 3: A Simple Circle Renderer (85 pts)](#part-3-a-simple-circle-renderer-85-pts)
+  - [Assignment 4](#assignment-4)
 
+<!-- /TOC -->
 <!-- /TOC -->
 <!-- /TOC -->
 <!-- /TOC -->
@@ -119,3 +121,48 @@ void exclusive_scan_iterative(int* start, int* end, int* output) {
 
 ### Part 3: A Simple Circle Renderer (85 pts)
 
+这道题涉及渲染图像的过程。以圆形为例，在屏幕上渲染的过程包含：
+
+- 计算出圆形覆盖哪些 pixel
+- 计算上面每个 pixel 的中心点，如果中心点在圆形内部，计算圆形在该点的颜色（rgb 值、透明度）
+- 融合每个圆形在这个点的颜色，记录为 pixel。（图形的前后位置会影响计算顺序）
+
+具体到问题，渲染时，圆渲染的先后关系会影响正确性。初始错误实现中，`CudaRenderer::render()` 中的 kernal launch 是为每个圆分配一个线程并行渲染，渲染的先后关系及原子性要求均无法满足。
+
+渲染器两个潜在的并行性轴：像素的并行性和圆的并行性。为每个圆分配一个线程并行渲染无法满足要求，那就改为为每个像素分配一个线程。每个线程内按顺序渲染圆。由此得到以下正确实现：
+
+```cpp
+__global__ void kernelRenderPixels() {
+    int pixelX = blockDim.x * blockIdx.x + threadIdx.x;
+    int pixelY = blockDim.y * blockIdx.y + threadIdx.y;
+    short imageWidth = cuConstRendererParams.imageWidth;
+    short imageHeight = cuConstRendererParams.imageHeight;
+    if (pixelX>= imageWidth || pixelY >= imageHeight)
+        return;
+
+    float invWidth = 1.f / imageWidth;
+    float invHeight = 1.f / imageHeight;
+    float2 pixelCenterNorm = make_float2(invWidth * (static_cast<float>(pixelX) + 0.5f),
+                                         invHeight * (static_cast<float>(pixelY) + 0.5f));
+    float4* imgPtr = (float4*)(&cuConstRendererParams.imageData[4 * (pixelY * imageWidth + pixelX)]);
+
+    int numCircles = cuConstRendererParams.numCircles;
+    for (int i = 0; i < numCircles; ++i) {
+        float3 p = *(float3*)(&cuConstRendererParams.position[3 * i]);
+        shadePixel(i, pixelCenterNorm, p, imgPtr);
+    }
+}
+
+void CudaRenderer::render() {
+    dim3 blockDim(16, 16);
+    dim3 gridDim(
+        (image->width + blockDim.x - 1) / blockDim.x,
+        (image->height + blockDim.y - 1) / blockDim.y);
+    kernelRenderPixels<<<gridDim, blockDim>>>();
+    cudaDeviceSynchronize();
+}
+```
+
+## Assignment 4
+
+今年 CS149 的 asst 4 改成 DNN 加速了，看了下项目的依赖似乎需要 AWS 的资源，先鸽了🥰
