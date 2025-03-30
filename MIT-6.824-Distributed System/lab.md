@@ -1,10 +1,30 @@
 # MIT 6.824: Distributed System
 
-## 课程资料
+<!-- TOC -->
 
-原来的课程编号换成了 6.5840，因此官网也更新了：<http://nil.csail.mit.edu/6.5840/2024/>。我使用的是 Spring 2024 版本。
+- [MIT 6.824: Distributed System](#mit-6824-distributed-system)
+  - [链接](#链接)
+  - [Lecture 1](#lecture-1)
+    - [预习 Mapreduce](#预习-mapreduce)
+    - [分布式系统简述](#分布式系统简述)
+    - [MapReduce](#mapreduce)
+  - [Lecture 2](#lecture-2)
+    - [Why threads?](#why-threads)
+  - [RPC](#rpc)
 
-Syllabus：<http://nil.csail.mit.edu/6.5840/2024/schedule.html>
+<!-- /TOC -->
+
+## 链接
+
+Syllabus: <http://nil.csail.mit.edu/6.5840/2024/schedule.html>
+
+Lab:
+
+- <http://nil.csail.mit.edu/6.824/2021/labs/lab-mr.html>
+- <http://nil.csail.mit.edu/6.5840/2024/labs/lab-kvsrv.html>
+- <http://nil.csail.mit.edu/6.5840/2024/labs/lab-raft.html>
+- <http://nil.csail.mit.edu/6.5840/2024/labs/lab-kvraft.html>
+- <http://nil.csail.mit.edu/6.5840/2024/labs/lab-shard.html>
 
 ## Lecture 1
 
@@ -85,3 +105,81 @@ Combiner 函数：
 
 省略
 
+---
+
+本节课介绍：
+
+- 什么是分布式系统？
+- 分布式系统发展历史
+- 课程结构
+
+### 分布式系统简述
+
+非正式定义：多台计算机、通过网络交互、合作完成任务
+
+使用分布式系统的场景 / 原因：
+
+- 连接多台机器，用于数据共享 / 计算基础设施共享
+- 通过并行提高性能
+- 容错，高可用性
+- 安全，隔离多个服务 / 系统
+
+发展历史：
+
+- 1980s，本地局域网，应用类型以 DNS、Email 为主
+- 1990s，数据中心，大型网站，网络搜索，网上购物
+- 2000s，云计算
+
+复杂性挑战：
+
+- 很多并行的部分
+- 需要处理组件故障
+- 增加机器
+
+基础设施：
+
+- 存储：kv 服务、文件系统
+- 计算：编排或构建分布式应用，例如 mapreduce
+- 通信：例如远程调用 RPC，语义会对系统产生影响
+
+主题：
+
+- fault tolerance
+  - 可用性，描述系统的可靠程度。关键技术是 replication
+  - 可恢复性，例如重启之后可以恢复状态。关键技术是 logging/transaction，以及持久存储
+- consistency
+  - 整个系统的使用和单台机器类似，并发和失败会影响这一点
+  - 不同类型的一致性
+- performance
+  - 需要在性能和提供容错、一致性之间 trade-off
+  - 性能指标一般涉及吞吐量、延迟
+
+### MapReduce
+
+略
+
+## Lecture 2
+
+### Why threads?
+
+线程可以提供多种类型的 concurrency：
+
+- I/O concurrency。一个线程因为 IO 没准备好被阻塞的时候，可以让其他线程运行
+- 多核并行。不同的线程可以在不同的核心上运行
+- 有一些定时操作，可以让线程执行
+
+Thread challenge：
+
+- race condition。两种解决方法：不共享内存，例如 Go 中的 channel；使用锁保护
+- coordination。可以使用 channel，或者 condition variable
+- deadlock
+
+## RPC
+
+远程过程调用，remote procedure call
+
+RPC 语义
+
+- at lease once：client 在失败时会重试，至少成功一次
+- at most one：0 或 1，Go 的就是这种
+- exactly once：很难
