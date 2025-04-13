@@ -1,185 +1,105 @@
-# MIT 6.824: Distributed System
+# MIT 6.824: Distributed System (Lab)
 
-<!-- TOC -->
+## Lab 1: MapReduce
 
-- [MIT 6.824: Distributed System](#mit-6824-distributed-system)
-  - [链接](#链接)
-  - [Lecture 1](#lecture-1)
-    - [预习 Mapreduce](#预习-mapreduce)
-    - [分布式系统简述](#分布式系统简述)
-    - [MapReduce](#mapreduce)
-  - [Lecture 2](#lecture-2)
-    - [Why threads?](#why-threads)
-  - [RPC](#rpc)
+![alt text](img/image-2.png)
 
-<!-- /TOC -->
+p.s. 这里有很多 `EOF` 的报错，百度了下怀疑是 rpc 调用的问题，后面再排查下
 
-## 链接
+本实验要求实现一个 MapReduce 框架，需要实现 `coordinator`、`worker`，以及它们之间的 RPC 交互逻辑。
+和看论文不同，具体实现一个框架还是有很多东西需要考虑，下面是我在实现过程中的总结。
 
-Syllabus: <http://nil.csail.mit.edu/6.5840/2024/schedule.html>
+首先是数据结构设计这块。按照 Lab 要求需要有这些 feature：
 
-Lab:
+```
+coordinator：分配工作给 worker，处理超时 worker（将工作分配给其他 worker）
+worker：向 coordinator 请求工作，调用 map/reduce 函数
+使用 RPC 交互
+```
 
-- <http://nil.csail.mit.edu/6.824/2021/labs/lab-mr.html>
-- <http://nil.csail.mit.edu/6.5840/2024/labs/lab-kvsrv.html>
-- <http://nil.csail.mit.edu/6.5840/2024/labs/lab-raft.html>
-- <http://nil.csail.mit.edu/6.5840/2024/labs/lab-kvraft.html>
-- <http://nil.csail.mit.edu/6.5840/2024/labs/lab-shard.html>
+### Coordinator
 
-## Lecture 1
+#### 是否要维护 worker 状态？
 
-### 预习 Mapreduce
+一开始我的想法是 `coordinator` 在初始化的时候创建一个 thread pool 并维护一个 task list，然后定时分配 task、轮询 task 状态。但是我看了下 repo 提供的测试脚本，发现 worker 的数目并不是固定的，因此如果要在 coordinator 这边维护 worker 状态，就需要实现在 coordinator 注册 worker 的方法，以及定时探活等功能，有点复杂。
 
-总结：
+如果不维护 worker 状态，转而维护 task 的状态呢？如果一个 worker 是 idle 的，它可以主动向 coordinator 发送心跳，然后从 coordinator 拿到 task 并执行。这样的 stateless worker 实现起来是更加简单的。
 
-- MapReduce 是一种处理和生成大数据集的编程模型，MapReduce 程序是天然并行的，系统会处理并行、容错、数据管理、负载均衡，用户只需要关心关键的 map/reduce 逻辑
-- `map` 函数会对每条 record 生成中间 kv 对，并且生成中间 kv 对
-- `reduce` 函数会合并 key 相同的中间 kv 对
+因此，这里的 `coordinator` 只维护了 task 的状态，使用 channel 来处理 worker 发送的信息（表示自己 idle 的心跳信息、完成 task 的报告信息）。值得一提的是，表示 job 状态的 `finishJob` 并没有使用 channel，而是使用读写锁来保护，这里我觉得还能改一下。
 
-举例，现在需要大量文件中每个单词出现的次数，那么编写的 map/reduce 函数是：
+```go
+type Task struct {
+    file      []string
+    id        int
+    startTime time.Time
+    status    TaskStatus
+}
 
-- map：对每个文件，生成中间 kv 对 `(word, 1)`。
-- reduce：聚合相同 key 的中间 kv 对，生成 kv 对 `(word, result)`
+type Coordinator struct {
+    files           []string
+    tasks           []Task
+    mappedFilenames [][]string // "map-x-y" files, mappedFiles[i] is processed by reduce worker i
+    finishedTasks   int
 
-![alt text](img/image.png)
+    nMap          int
+    nReduce       int
+    phase         SchedulePhase
+    heartbeatChan chan heartbeatMsg
+    reportChan    chan reportMsg
+    finishJob     bool
+    finishJobLock sync.RWMutex
+    // finishCh chan struct{}
 
-我感觉这里 reduce 应该表示：`(k2, list(k2, v2)) -> (k2, v3)`
+    taskId int
+}
 
-一些应用场景：
+type heartbeatMsg struct {
+    response *HeartbeatResponse
+    ok       chan struct{}
+}
 
-- 文本匹配
-- url access 统计
-- reverse web-link graph，web 页面跳转统计
-- inverted index，搜索 word 在哪些文件中出现过
-- distributed sort，后面详细讨论
+type reportMsg struct {
+    request *ReportRequest
+    ok      chan struct{}
+}
+```
 
-MapReduce 的正确实现依赖于具体的环境，本文介绍的实现基于 Google 的环境————以太网互联的大规模消费级 PC 集群：
+#### Channel
 
-- 每台机器为双核 x86 处理器，Linux 系统，2-4GB 内存
-- 网卡为 100Mbps 或者 1Gbps，但是实际带宽比这个低
-- 一个集群有成百上千台机器，因此节点故障很频繁
-- 存储使用机器上的磁盘，分布式文件系统用于管理这些磁盘的数据、保证可靠性
-- 用户通过调度系统提交作业，每个 job 包含一些 task，task 会被提交到集群的可用机器上
+`coordinator` 在接受到 `worker` 的 RPC 请求后，会将请求体放到两个 channel 中，给负责调度 task 的协程处理。协程处理完请求之后会通过 channel 通知，因为只会有这一个调度协程修改 `coodinator` 的数据，因此也不需要考虑 data race 的问题。channel 真的很好用~
 
-MapReduce 执行流程：
+#### 检测超时
 
-![alt text](img/image-1.png)
+我在检测超时 task 这块没有使用定时检测，而是在分配 task 的时候顺便检测，如果是 task 是 running 并且 10s 还未完成，就重新分配。本来还以为这个功能会很麻烦，其实实现起来倒挺简单。
 
-- 输入被划分成 M 个 16-64MB 大小的块，中间输出被划分成 R 个块
-- master 负责将工作分配给 worker，一共有 `M+R` 个 task
-- map worker 会读取输入，将中间 kv 对写到内存中
-- 内存里的中间 kv 对会周期性地被写到 local disk，并且文件位置会被传回 master
-- reduce worker 收到中间文件的位置信息之后，会远程读这些数据。之后会按照 intermediate key 排序。排序可以将相同 key 的值聚集在一起，从而 reduce 函数可以按顺序处理 kv 对。如果数据太多，还需要使用 externally sort。接着，reduce worker 会遍历已排序的数据，对 kv 对执行 reduce 函数，将结果 append 到输出文件
+这里还有一个和 MapReduce 论文区别的点，因为实际只有一个节点，worker 是进程，所以论文中写的 “故障节点上的 completed map task 要重新执行” 这条不需要，成功的 task 不需要重新执行，只需要重新执行失败的 task 就行了。
 
-最后会产生 R 个文件，一般不会组合成一个文件。用户可能直接将 R 个文件作为下一个 MapReduce 应用的输入，或者是其他分布式应用的输入
+### Worker
 
-每个 task 有三种状态（idle/in-progress/completed）
+`worker` 实现就比较简单，主要是一个循环：
 
-容错：
+```go
+func Worker(mapF func(string, string) []KeyValue, reduceF func(string, []string) string) {
+for {
+    response := doHeartbeat()
+    log.Printf("Worker: receive coordinator's heartbeat %v \n", response)
+    switch response.JobType {
+    case MapTask:
+        doMapTask(mapF, response)
+    case ReduceTask:
+        doReduceTask(reduceF, response)
+    case Wait:
+        time.Sleep(1 * time.Second)
+    case CompleteJob:
+        return
+    default:
+        panic(fmt.Sprintf("unexpected jobType %v", response.JobType))
+    }
+}
+}
+```
 
-- worker：
-  - master 通过心跳机制探活 worker，worker 一段时间不响应会被判断为 failed。
-  - failed worker 上的 completed map task 和 in-progress map/reduce task 会被标记为 idle 并被其他 worker 重新执行。completed reduce task 不会重新执行，因为输出已经写到 GFS 了，而 map task 的输出在 local disk 中。
-  - 对于节点故障导致的 map task 重复执行的情况，所有 reduce worker 会被通知 reexecution，这样才能在新 worker 上读数据
-- master：
-  - master 需要维护的状态有：每个 map/reduce task 的状态、每个 wroker 的状态、completed map task 的输出文件的位置和大小
-  - 一个 master 故障的概率不高，如果要做容错可以定期保存 checkpoint 状态
-- semantics：
-  - 保证分布式 MapReduce 框架的计算结果和 non-faulting 串行程序的结果一致
-  - atomic commits of map/reduce。这块没太看懂
+这里做了一点简化，将发送心跳和请求 task 放到一起了，所以 coordinator 会在收到心跳之后直接派活。
+在 report map task 的时候，请求里面携带了中间文件的文件名，coordinator 会将这些信息填到 reduce task 中。
 
-局部性：
-
-GFS 管理的输入数据存储在 local disk，不同机器上是有副本的，可以用这一点节省网络带宽。MapReduce 在调度 map task 时，会尝试在包含输入数据副本的 worker 上调度任务，如果无法实现，会尝试在靠近副本位置的 worker 上调度任务（例如同一交换机下）。效果是，大多数数据都是本地读取的
-
-长尾优化：
-
-- 现象：最慢的 map/reduce task 会影响整体完成时间，
-- 解决方法：MapReduce 操作接近完成时，Master 会调度剩余 in-progress 任务的备份执行，无论主任务还是备份任务完成，该任务都会被标记为已完成。
-
-Combiner 函数：
-
-某些情况下，中间产生的 kv 对有显著重复，例如 word 计数中会出现很多 `(the, 1)`，这时可以用 combiner function 在网络传输数据之前做 partial merging。
-
-测试部分：
-
-省略
-
----
-
-本节课介绍：
-
-- 什么是分布式系统？
-- 分布式系统发展历史
-- 课程结构
-
-### 分布式系统简述
-
-非正式定义：多台计算机、通过网络交互、合作完成任务
-
-使用分布式系统的场景 / 原因：
-
-- 连接多台机器，用于数据共享 / 计算基础设施共享
-- 通过并行提高性能
-- 容错，高可用性
-- 安全，隔离多个服务 / 系统
-
-发展历史：
-
-- 1980s，本地局域网，应用类型以 DNS、Email 为主
-- 1990s，数据中心，大型网站，网络搜索，网上购物
-- 2000s，云计算
-
-复杂性挑战：
-
-- 很多并行的部分
-- 需要处理组件故障
-- 增加机器
-
-基础设施：
-
-- 存储：kv 服务、文件系统
-- 计算：编排或构建分布式应用，例如 mapreduce
-- 通信：例如远程调用 RPC，语义会对系统产生影响
-
-主题：
-
-- fault tolerance
-  - 可用性，描述系统的可靠程度。关键技术是 replication
-  - 可恢复性，例如重启之后可以恢复状态。关键技术是 logging/transaction，以及持久存储
-- consistency
-  - 整个系统的使用和单台机器类似，并发和失败会影响这一点
-  - 不同类型的一致性
-- performance
-  - 需要在性能和提供容错、一致性之间 trade-off
-  - 性能指标一般涉及吞吐量、延迟
-
-### MapReduce
-
-略
-
-## Lecture 2
-
-### Why threads?
-
-线程可以提供多种类型的 concurrency：
-
-- I/O concurrency。一个线程因为 IO 没准备好被阻塞的时候，可以让其他线程运行
-- 多核并行。不同的线程可以在不同的核心上运行
-- 有一些定时操作，可以让线程执行
-
-Thread challenge：
-
-- race condition。两种解决方法：不共享内存，例如 Go 中的 channel；使用锁保护
-- coordination。可以使用 channel，或者 condition variable
-- deadlock
-
-## RPC
-
-远程过程调用，remote procedure call
-
-RPC 语义
-
-- at lease once：client 在失败时会重试，至少成功一次
-- at most one：0 或 1，Go 的就是这种
-- exactly once：很难
+还有一个文件名的问题，map worker 生成的文件名是 `map-<随机 5 位字符串>-<reduce worker id>`，这里本来想把中间部分换成 worker id 这种更有标识度的值，但是还是需要在 coordinator 这边维护 worker 状态就没弄。反正最后只需要将中间文件按 reduce worker 划分，所以这里就直接让 worker 把生成的中间文件作为 `[]string` 传过来了，后面 reduce task 的输入就直接用这个值。
