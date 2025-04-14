@@ -3,21 +3,17 @@
 <!-- TOC -->
 
 - [MIT 6.824: Distributed System](#mit-6824-distributed-system)
-  - [链接](#链接)
   - [Lecture 1](#lecture-1)
     - [预习 Mapreduce](#预习-mapreduce)
     - [分布式系统简述](#分布式系统简述)
     - [MapReduce](#mapreduce)
   - [Lecture 2](#lecture-2)
     - [Why threads?](#why-threads)
-  - [RPC](#rpc)
+    - [Crawler](#crawler)
+    - [RPC](#rpc)
 
 <!-- /TOC -->
-
-## 链接
-
-Syllabus: <http://nil.csail.mit.edu/6.5840/2024/schedule.html>
-
+<!-- /TOC -->
 Lab:
 
 - <http://nil.csail.mit.edu/6.824/2021/labs/lab-mr.html>
@@ -174,7 +170,41 @@ Thread challenge：
 - coordination。可以使用 channel，或者 condition variable
 - deadlock
 
-## RPC
+Is there an alternative to threads?
+
+事件驱动模型（event-driven）是一种替代方案，它在一个单线程中通过显式地交错执行多个任务来实现并发。
+每个任务的状态被显式地维护在一个表中，事件循环负责检查输入、执行任务步骤并更新状态。
+
+工作原理：
+
+- 事件循环不断检查是否有新的事件（如 I/O 完成、消息到达）。
+- 当事件发生时，事件循环会处理该事件，并更新相关的任务状态。
+- 这种方式避免了多线程的开销，但仍然可以实现 I/O 并发（例如同时处理多个网络请求）。
+
+适用场景：适合 IO 密集型的应用，例如网络服务器、爬虫等，不适合计算密集型任务，例如科学计算
+
+### Crawler
+
+crawler challenges
+
+- 要利用 IO 并行：网络请求通常受限于延迟而非带宽，因此通过并发（例如多线程或者异步 IO）可以提高爬虫效率，线程是一种实现方式
+- 每个 URL 只抓取一次：避免重复抓取，可以节省网络资源和服务器资源
+- 判断任务结束：爬虫需要明确任务的结束条件，例如所有目标 URL 已获取到、达到抓取深度限制、抓取数据量已到阈值
+
+给了三种实现：
+
+- serial。单个线程使用 DFS 爬取页面，使用 map 到记录访问过的页面
+- mutex，多线程，使用 mutex 保护 map
+- channel，多线程，worker 通过 channel 将爬到的 url 传给 master
+
+sharing & lock，channel 该如何选择？
+
+大多数情况下两者都可以。主要取决于程序员的想法：
+
+- state，使用 sharing+lock
+- communication，使用 channel
+
+### RPC
 
 远程过程调用，remote procedure call
 
@@ -182,4 +212,4 @@ RPC 语义
 
 - at lease once：client 在失败时会重试，至少成功一次
 - at most one：0 或 1，Go 的就是这种
-- exactly once：很难
+- exactly once：很难实现
