@@ -11,7 +11,11 @@
     - [Why threads?](#why-threads)
     - [Crawler](#crawler)
     - [RPC](#rpc)
+  - [Lecture 3](#lecture-3)
+    - [预习 GFS](#预习-gfs)
 
+<!-- /TOC -->
+<!-- /TOC -->
 <!-- /TOC -->
 <!-- /TOC -->
 Lab:
@@ -213,3 +217,36 @@ RPC 语义
 - at lease once：client 在失败时会重试，至少成功一次
 - at most one：0 或 1，Go 的就是这种
 - exactly once：很难实现
+
+RPC 故障处理
+
+当 RPC 因为网络或其他原因失败时，一种常用处理方法是 client 重试几次，如果仍然没有收到 server 回复再报错，这种处理方法适合只读的操作，或者是其他幂等操作
+
+更好的 RPC behaviour 是 at most once。这需要 server 能识别到重复的请求，返回 previous reply 而非重复执行 handler。（我的理解，previous reply 就是回复一次）
+
+如何识别重复请求：每个请求带一个唯一 ID（XID），如果重新发送这个请求，需要带相同的 XID。server 需要记录收到过的 XID，并维护一个 request-handler 的表：
+
+```
+server:
+    if seen[xid]:
+        r = old[xid]
+    else
+        r = handler()
+        old[xid] = r
+        seen[xid] = true
+```
+
+防止 XID 重复：使用 client 特有信息（例如 IP）+ 消息序列号作为 XID
+server 在判断哪些 RPC 消息已经处理完时，可以参考 TCP 的处理方法，让 client 带一个 ack，告知哪些消息已经处理了。或者只允许同时只存在一个未完成的 RPC：每次收到 `seq` 时，server 丢弃所有 `<=seq` 的消息
+
+如果最初的请求仍在执行，如何处理重复请求：给正在执行的 RPC 设置 flag，对重复请求 wait 或者 ignore
+
+如果 server 发生故障，还能保证 at-most-once 吗：server 需要将 duplicate info 写到 disk，或者 replica server
+
+go-rpc 就是 at-most-once 语义，client 不会重新请求
+
+exactly-once：无限重试 + 重复检测 + 容错服务
+
+## Lecture 3
+
+### 预习 GFS
