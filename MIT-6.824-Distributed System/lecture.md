@@ -262,10 +262,59 @@ GFS 是面向大规模数据密集型应用、可伸缩的分布式文件系统�
   - 背景：文件很大很多，单个文件可能几个 GB，有数亿文件，总量大概 TB 级别
   - 设计点：需要考虑 IO 操作和 block 的尺寸
 - 文件访问模式
-  - 背景：绝大部分文件是追加数据，而不是覆盖原有数据，基本没有随机读写。一旦写完之后，对文件只有读操作，一般是顺序读。
+  - 背景：
+    - 写：绝大部分文件是追加数据，而不是覆盖原有数据，基本没有随机读写。一旦写完之后，对文件只有读操作，一般是顺序读。
+    - 读：大部分连续读（数百 KB-1MB），小部分随机读
   - 设计点：对于这种访问模式，客户端对数据块缓存是没有意义的。后面的性能优化、原子性保证都要考虑追加写操作。（读：顺序读取本身的 locality 已经很高了，因此 OS 的 prefetch 已经能满足需求了。写：追加操作不用读取之前的数据，因此也不用缓存之前的 block）
 - 应用 / FS 协同设计
   - 为了简化设计放松了对 GFS 一致性模型的要求，减少了的应用的限制
-  - 引入原子的 append 操作，让多个 client 可以同时 append 而不需要额外同步操作
+  - 引入原子的 append 操作，让多个 client 可以同时 append 一个文件而不需要额外同步操作，在多路结果合并、生产者 - 消费者队列很有用
+- 性能要求
+  - 应用对带宽的要求更大，因此设计上更倾向保证稳定带宽，而非低延迟
 
 部署规模：有多套 GFS 集群，最大的有 1000 + 节点，超 300TB 存储，client 有数百个
+
+架构：
+
+![alt text](img/image-3.png)
+
+- 一个 GFS 集群包含一个 master 和多个 chunk server
+- 文件被划分成固定大小的 chunk，master 给每个 chunk 分配一个唯一的 64 位标识，chunk server 将 chunk 以 linux 文件形式保存在本地硬盘，根据 chunk id 和 offset 读写数据。每个 chunk 会被复制到多个 chunk server 上（默认 3 个）。
+- master 节点管理 metadata，例如 file->chunk 的 mapping、chunk 的位置。还有一些系统管理信息，例如 chunk 租期管理、orphan chunk 回收、chunk 迁移、chunk server 状态管理等。
+- 应用程序以库的形式调用 GFS client 代码。client 和 master 的通信只涉及 metadata，数据操作是和 chunk server 交互的。
+- client 只会缓存 metadata，chunk server 不缓存数据，由 OS 提供 cache
+
+chunk size
+
+选择了 64MB 的 chunk size，远大于一般文件系统的 block size。较大的 chunk size 的几个优点：
+
+- 减少 client-master 的通信次数，workload 主要是连续读写大文件
+- client 在多次读写时能保持 TCP 连接
+- 减少 master metadata 数量，可以将 metadata 全部放到内存
+
+大 chunk size 的缺点
+
+小文件的 chunk 很少，如果很多 client 访问同一个 chunk，会导致一个 chunk server 成为热点。
+解决方法是，设置更大 replica，或者允许 client 从去其他 client 读取数据。
+
+master metadata
+
+master 会在内存中保存几种类型的 metadata：
+
+- file/chunk namespace
+- file->chunk mapping
+- chunk replica 位置
+
+前面两种数据的操作日志会保存在 master 和 remote master 的磁盘上，保证能从故障恢复。chunk 位置不会持久保存，master 会在启动时轮询 chunk server，之后定期轮询更新。
+鉴于可能频繁出现的 chunk server 加入 / 离开集群、故障的情况，这种设计简化了 master 和 chunk server 数据同步的问题。（只有 chunk server 才能确定 chunk 是否在它硬盘上）
+
+operation log
+
+log 是 metadata 的持久化存储，也是判断并发操作顺序的 logical time line。file、chunk 以及它们的版本使用创建时间作为唯一标识。
+为了保证 log 完整，master 会在确认 log 持久化（将操作记录写到本地、远程 disk）之后才响应 client 请求。master 会对日志进行批处理，减少对性能影响。
+
+为了缩短故障恢复时间，需要让 log 变小，因此 master 会在 log 增长到一个量时对系统做一次 checkpoint。checkpoint 是一个 compact B-tree，可以直接 map 到内存并用于 namespace lookup，从而加速恢复。
+
+consistency model
+
+这块没太看懂
