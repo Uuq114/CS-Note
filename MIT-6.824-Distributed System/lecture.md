@@ -317,4 +317,13 @@ log 是 metadata 的持久化存储，也是判断并发操作顺序的 logical 
 
 consistency model
 
-这块没太看懂
+这块没太看懂，说是为了支持分布式应用，放松了一致性的要求。
+
+原子性的 namespace 操作：文件 namespace 的变更是原子的，例如创建文件。namespace 锁定和操作日志保证这些变更的原子性和正确性。
+
+定义了几种 file region 的状态：
+
+- consistent：所有客户端无论读哪个副本，都能看到相同的数据
+- defined：如果 file region 是 consistent 的，并且客户端看到是修改的全部内容
+
+多个客户端并发修改时，如果成功，那么文件会变成 consistent+undefined，此时所有客户端看到相同的数据，通常是多个变更的混合；如果失败，那么文件会变成 unconsistent，此时不同客户端可能看到不一样的数据。
