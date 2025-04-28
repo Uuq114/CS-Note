@@ -327,3 +327,27 @@ consistency model
 - defined：如果 file region 是 consistent 的，并且客户端看到是修改的全部内容
 
 多个客户端并发修改时，如果成功，那么文件会变成 consistent+undefined，此时所有客户端看到相同的数据，通常是多个变更的混合；如果失败，那么文件会变成 unconsistent，此时不同客户端可能看到不一样的数据。
+
+lease
+
+GFS 中一个文件有多个副本，在修改文件内容或者 metadata 时，所有的副本都要修改。为了保证多个副本内容相同、减少 GFS master 的负载，提出 lease 机制。
+
+在多个副本中，master 会选择一个发 chunk lease，这个副本就称为 primary。primary 会决定该 chunk 上所有修改执行的顺序，其他副本（secondary）也要按这个顺序应用修改。
+
+以下是 master 颁发 lease、多个副本同步内容的流程图
+
+![alt text](img/image-4.png)
+
+1. client 向 master 请求 chunk server 信息（谁有 chunk lease、其他副本位置），如果没有人有 lease，那么 master 会发一个 lease
+2. master 返回 primary、secondary，client 会缓存这些信息，直到 primary 无法访问或者 lease 或者过期
+3. client 将 data 发给所有副本，顺序随意。每个 chunk server 会将数据保存在 LRU cache 中。这里只发送了 data，data flow 和 control 是分开的。
+4. 在所有副本确认收到 data 后，client 向 master 发送写请求。primary 确定一个应用 mutation 的顺序，并在本地应用
+5. primary 将写请求转发到 secondary，所有 secondary 按照相同顺序应用更改
+6. 应用更改之后，所有 secondary 回复 primary
+7. primary 回复 client，告知是正常还是异常。如果发生错误，说明此时 primary 和部分 secondary 已经成功修改。此时 client 会从第 3 步开始重试几次，如果再失败就从第 1 步开始重试
+
+decouple data flow and control flow
+
+通过解耦 data flow 和 control flow，可以高效利用网络。data flow 是通过 pipelined、特意设计的 chunk server chain 线性传递的。
+
+线性的传递和
