@@ -348,6 +348,9 @@ GFS 中一个文件有多个副本，在修改文件内容或者 metadata 时，
 
 decouple data flow and control flow
 
-通过解耦 data flow 和 control flow，可以高效利用网络。data flow 是通过 pipelined、特意设计的 chunk server chain 线性传递的。
+- 线性传递：通过解耦 data flow 和 control flow，可以高效利用网络。data flow 是通过 pipelined、特意设计的 chunk server chain 线性传递的，而非通过其他的拓扑例如 tree 传递。
 
-线性的传递和
+> 我的理解是，假设 client 同时将 data 发给所有副本，那么网络上会有很多相同的数据。这样线性地传递可以更有效利用带宽。
+
+- 就近传递：为了避免网络瓶颈，每台机器会将 data 传给网络拓扑上最近的机器。GFS 集群的网络也比较简单，可以从 IP 地址估算一个 “距离”。
+- pipeline 数据传输：只要 chunk server 收到部分数据，就开始转发。
