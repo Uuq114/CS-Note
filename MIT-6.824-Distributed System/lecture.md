@@ -13,11 +13,25 @@
     - [RPC](#rpc)
   - [Lecture 3](#lecture-3)
     - [预习 GFS](#预习-gfs)
+      - [架构](#架构)
+      - [chunk size](#chunk-size)
+      - [大 chunk size 的缺点](#大-chunk-size-的缺点)
+      - [master metadata](#master-metadata)
+      - [operation log](#operation-log)
+      - [consistency model](#consistency-model)
+      - [lease](#lease)
+      - [decouple data flow and control flow](#decouple-data-flow-and-control-flow)
+      - [atomic record append](#atomic-record-append)
+      - [snapshot](#snapshot)
+      - [master operation](#master-operation)
+      - [garbage collection](#garbage-collection)
+      - [stale replica detection](#stale-replica-detection)
+      - [fault tolerance and diagnosis](#fault-tolerance-and-diagnosis)
+      - [experience](#experience)
 
 <!-- /TOC -->
 <!-- /TOC -->
-<!-- /TOC -->
-<!-- /TOC -->
+
 Lab:
 
 - <http://nil.csail.mit.edu/6.824/2021/labs/lab-mr.html>
@@ -274,7 +288,7 @@ GFS 是面向大规模数据密集型应用、可伸缩的分布式文件系统�
 
 部署规模：有多套 GFS 集群，最大的有 1000 + 节点，超 300TB 存储，client 有数百个
 
-架构：
+#### 架构
 
 ![alt text](img/image-3.png)
 
@@ -284,7 +298,7 @@ GFS 是面向大规模数据密集型应用、可伸缩的分布式文件系统�
 - 应用程序以库的形式调用 GFS client 代码。client 和 master 的通信只涉及 metadata，数据操作是和 chunk server 交互的。
 - client 只会缓存 metadata，chunk server 不缓存数据，由 OS 提供 cache
 
-chunk size
+#### chunk size
 
 选择了 64MB 的 chunk size，远大于一般文件系统的 block size。较大的 chunk size 的几个优点：
 
@@ -292,12 +306,12 @@ chunk size
 - client 在多次读写时能保持 TCP 连接
 - 减少 master metadata 数量，可以将 metadata 全部放到内存
 
-大 chunk size 的缺点
+#### 大 chunk size 的缺点
 
 小文件的 chunk 很少，如果很多 client 访问同一个 chunk，会导致一个 chunk server 成为热点。
 解决方法是，设置更大 replica，或者允许 client 从去其他 client 读取数据。
 
-master metadata
+#### master metadata
 
 master 会在内存中保存几种类型的 metadata：
 
@@ -308,14 +322,14 @@ master 会在内存中保存几种类型的 metadata：
 前面两种数据的操作日志会保存在 master 和 remote master 的磁盘上，保证能从故障恢复。chunk 位置不会持久保存，master 会在启动时轮询 chunk server，之后定期轮询更新。
 鉴于可能频繁出现的 chunk server 加入 / 离开集群、故障的情况，这种设计简化了 master 和 chunk server 数据同步的问题。（只有 chunk server 才能确定 chunk 是否在它硬盘上）
 
-operation log
+#### operation log
 
 log 是 metadata 的持久化存储，也是判断并发操作顺序的 logical time line。file、chunk 以及它们的版本使用创建时间作为唯一标识。
 为了保证 log 完整，master 会在确认 log 持久化（将操作记录写到本地、远程 disk）之后才响应 client 请求。master 会对日志进行批处理，减少对性能影响。
 
 为了缩短故障恢复时间，需要让 log 变小，因此 master 会在 log 增长到一个量时对系统做一次 checkpoint。checkpoint 是一个 compact B-tree，可以直接 map 到内存并用于 namespace lookup，从而加速恢复。
 
-consistency model
+#### consistency model
 
 这块没太看懂，说是为了支持分布式应用，放松了一致性的要求。
 
@@ -328,7 +342,7 @@ consistency model
 
 多个客户端并发修改时，如果成功，那么文件会变成 consistent+undefined，此时所有客户端看到相同的数据，通常是多个变更的混合；如果失败，那么文件会变成 unconsistent，此时不同客户端可能看到不一样的数据。
 
-lease
+#### lease
 
 GFS 中一个文件有多个副本，在修改文件内容或者 metadata 时，所有的副本都要修改。为了保证多个副本内容相同、减少 GFS master 的负载，提出 lease 机制。
 
@@ -346,11 +360,75 @@ GFS 中一个文件有多个副本，在修改文件内容或者 metadata 时，
 6. 应用更改之后，所有 secondary 回复 primary
 7. primary 回复 client，告知是正常还是异常。如果发生错误，说明此时 primary 和部分 secondary 已经成功修改。此时 client 会从第 3 步开始重试几次，如果再失败就从第 1 步开始重试
 
-decouple data flow and control flow
+#### decouple data flow and control flow
 
-- 线性传递：通过解耦 data flow 和 control flow，可以高效利用网络。data flow 是通过 pipelined、特意设计的 chunk server chain 线性传递的，而非通过其他的拓扑例如 tree 传递。
+- 线性传递：通过解耦 data flow 和 control flow，可以高效利用网络。data flow 是通过 pipelined、特意设计的 chunk server chain 线性（连续？）传递的，而非通过其他的拓扑例如 tree 传递。
 
 > 我的理解是，假设 client 同时将 data 发给所有副本，那么网络上会有很多相同的数据。这样线性地传递可以更有效利用带宽。
 
 - 就近传递：为了避免网络瓶颈，每台机器会将 data 传给网络拓扑上最近的机器。GFS 集群的网络也比较简单，可以从 IP 地址估算一个 “距离”。
 - pipeline 数据传输：只要 chunk server 收到部分数据，就开始转发。
+
+#### atomic record append
+
+GFS 提供了一种原子的 append 操作：record append。主要是针对分布式应用常见的多生产者 - 单消费者、merge 很多 client 的输出场景。可以向 file append atomically，向 client 返回 offset。
+
+record append 是数据变更的一种，也适用上面 write control 的内容。client 在将 data 传输到所有副本之后会向 primary 发送请求，primary 会检查 append 是否会超过 chunk size，如果不会超过，primary 会追加内容并通知 secondary 在相同 offset 写入数据；如果会超过 chunk size，那么 primary 会填充 chunk 并通知 client 在下一个 chunk 重试。
+
+GFS 不保证所有副本在字节级别完全相同，只保证数据以原子单位至少写入一次。
+
+#### snapshot
+
+使用 copy on write 来实现快照。收到创建快照的请求后，master 首先 revoke 需要快照的区域中已发出的 lease，这样如果有 client 需要写的话，master 能收到对 lease 的请求。收回 lease 之后，master 会将 op log 保存到 disk、复制一份内存中的 metadata 并应用 log。于是，snapshot 和原文件都指向相同的 chunk。
+
+完成快照后，client 发起请求，master 发现 chunk reference 大于 1，因此会让 chunk server 复制该 chunk，后续的写都会到新 chunk 中。
+
+#### master operation
+
+GFS master 管理所有 chunk server：决定存储位置、创建 chunk 和副本、协调 chunk server、负载均衡、回收空间等。
+
+GFS namespace：
+GFS namespace 逻辑上是从完整路径名 ->metadata 的映射，每个节点（文件、目录）都有一个读写锁，例如涉及 `/d1/d2/.../dn/leaf` 的操作，那么会获取 `/d1`、`/d1/d2`、...、`/d1/.../dn` 的读锁，以及 `/d1/d2/.../dn/leaf` 的写锁。父目录的读锁足以防止父目录被删除。锁以一致的总顺序获取，以防止死锁，它们首先按命名空间树中的层级排序，在同一层级内按字典序排序。
+
+副本位置：
+为了最大化数据的可靠性和可用性，将 chunk 副本分布在不同机架、不同机器上
+
+chunk creation、re-replication、rebalancing：
+
+- 创建：考虑磁盘空间利用率、chunk server 近期创建新 chunk 数量（避免写入热点）、不同机架
+- 重新复制：当可用副本数量低于目标时，master 会重新复制 chunk。需要重新复制的 chunk 会按优先级排序。重新复制和创建类似，也会考虑位置
+- 重新平衡：定期检查当前副本分布，保证更好的磁盘空间和负载平衡。因此，新的 chunk server 会被逐渐填充，而不是瞬间有大量的新 chunk 写入
+
+#### garbage collection
+
+删除文件：GFS 使用惰性删除，会立即记录删除操作但不马上回收资源，而是将文件重命名为包含删除时间戳的隐藏名称，在一段时间后才真正删除。
+垃圾回收：定期扫描孤立的 chunk（无法从任何文件访问）。chunk server 在心跳中会报告 chunk 信息，master 会回复 metadata 中不包含的 chunk，这些都可以清除
+
+#### stale replica detection
+
+master 给每个 chunk 维护一个版本号，用来区分是否过时。如果 chunk server 发生故障并错过 chunk 的更新，那么副本可能会过时。
+
+在 master 授予新 lease 时，master 会增加版本号并通知所有最新的副本，master 和这些副本会将新的版本号记录下来。这一动作发生在回复 client 之前，因此如果副本不可用，它的版本号是不会更新的。chunk server 和 master 的心跳也会交换 chunk 的版本号，master 会检查是哪边的更新，从而判断是 stale replica / 自己在发 lease 时失败了。
+
+#### fault tolerance and diagnosis
+
+保证系统高可用的两个策略：快速恢复（fast recovery）和复制（replication）
+
+- 高可用：
+  - 快速恢复：master 和 chunk server 被设计为能几秒内快速恢复。不区分是否正常终止和异常终止
+  - chunk replication：每个 chunk 的副本在不同机架上，且能为不同目录 / 文件指定不同 replication level。当 chunk server 故障或者副本损坏时，master 会复制现有 chunk 达到预先复制目标。
+  - master replication：master 的状态也有复制。master 的 op log 和 checkpoint 会在多台机器上复制。只有在 op log 被写到 master 和所有 master 副本的磁盘上才会视为 committed。此外，shadow master 可以在 primary master 故障后提供文件系统的只读访问。shadow 可能比 primary 略微滞后一些，因此是 shadow 而非镜像。因为实际的数据是从 chunk server 读取的，因此这里的滞后是指，metadata 可能不是最新的。为了保证信息同步，shadow master 是不断读 op log 并应用更改的，它也会定期轮询 chunk server 来定位 chunk。（和 primary master 相比，是读取已有 op log 并应用修改的；和 backup master 相比，是会和 chunk server 交换 chunk 信息的，只在 primary master 决定创建或者删除 chunk 导致 chunk 位置更新时依赖 primary master。）
+- 数据完整性：
+  - 经常的磁盘故障会导致数据损坏或丢失。chunk server 使用 checksum 来检测存储数据的损坏。因为每个 chunk server 的副本不一定完全相同，因此每个 chunk server 需要维护 checksum 来独立验证自身副本的完整性。
+  - 一个 chunk 被分为很多的 64KB 的 block，每个 block 有一个 32 位 checksum。对于读取操作，chunk server 会校验数据，如果校验失败会向 master 报告。对于追加操作，不会在 last partial block 继续写，而是写到新 block 中并更新 checksum，因此如果前面 partial block 有数据损坏，会在下次读的时候发现。对于覆盖了一个 chunk 范围的写，就需要读取和校验第一个和最后一个 block，避免隐藏损坏。
+  - 在空闲时间，chunk server 会扫描和校验 inactive chunk，这样能发现很少被访问的 chunk 的损坏。
+- 诊断工具：
+  - 日志：大量日志，记录重要事件（例如 chunk server 的启动和关闭）、所有 RPC 请求和响应。日志是顺序且异步写入的，对性能影响小。
+
+#### experience
+
+在构建和使用GFS中，遇到的一些issue，涉及使用和技术上的：
+
+- 最初对权限和配额的支持很少，但是这些功能在实际系统中很需要，需要防止用户相互干扰。
+- 主要问题来自disk和linux。disk对IDE protocol的支持能力偶尔不匹配，可能导致静默损坏数据。
+
