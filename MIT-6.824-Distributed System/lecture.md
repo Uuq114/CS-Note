@@ -30,8 +30,6 @@
       - [experience](#experience)
 
 <!-- /TOC -->
-<!-- /TOC -->
-
 Lab:
 
 - <http://nil.csail.mit.edu/6.824/2021/labs/lab-mr.html>
@@ -427,8 +425,37 @@ master 给每个 chunk 维护一个版本号，用来区分是否过时。如果
 
 #### experience
 
-在构建和使用GFS中，遇到的一些issue，涉及使用和技术上的：
+在构建和使用 GFS 中，遇到的一些 issue，涉及使用和技术上的：
 
 - 最初对权限和配额的支持很少，但是这些功能在实际系统中很需要，需要防止用户相互干扰。
-- 主要问题来自disk和linux。disk对IDE protocol的支持能力偶尔不匹配，可能导致静默损坏数据。
+- 主要问题来自 disk 和 linux。disk 对 IDE protocol 的支持能力偶尔不匹配，可能导致静默损坏数据。
 
+---
+
+GFS paper 讨论了一个关键抽象，分布式存储应该提供哪些接口 / 语义，以及内部应该如何工作。这篇文章涉及了 6.824 的很多主题，例如 parallel performance、fault tolerance、replication、consistency
+
+分布式存储很复杂的原因：需要保证高性能、系统 / 机器故障、复制可能导致的 inconsistency
+
+GFS 在 2003 年中 SOSP 的原因：
+
+- 并非使用了分布式、sharding、fault-tolerance 这些基本概念
+- 超大规模的工业级使用案例
+- 弱一致性的成功应用、single master 的成功应用
+
+GFS 对 client 提供的一致性保证：
+
+- 如果 primary 通知了 client record append 操作已完成，那么随后读取这个文件的 client 都能看到追加的记录。但是不保证失败的追加不可见，不保证所有 reader 都看到相同的文件内容、记录顺序。
+
+总结：
+
+- GFS good ideas：
+  - 将 namespace 和 storage 分开，master 和 chunk server
+  - sharding for parallel throughput
+  - 使用 huge file/chunk 减少开销
+  - 使用 primary 决定 write sequence
+  - 使用 lease 防止 split-brain chunk server primaries
+- 可以优化的：
+  - single master performance，单台机器的 CPU 和内存有上限，GFS 将 metadata 存储在内存，当文件数量太多时无法这样
+  - 对小文件没那么有效
+  - 缺乏对 master replica 的自动 fail-over，需要手动恢复
+  - 一致性有点弱
