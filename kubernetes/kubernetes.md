@@ -1,22 +1,17 @@
 # 深入剖析 Kubernetes
 
-## Docker
+<!-- TOC -->
 
-### Docker 背景
+- [深入剖析 Kubernetes](#%E6%B7%B1%E5%85%A5%E5%89%96%E6%9E%90-kubernetes)
+        - [Docker 实现方法](#docker-%E5%AE%9E%E7%8E%B0%E6%96%B9%E6%B3%95)
+        - [Docker 的局限](#docker-%E7%9A%84%E5%B1%80%E9%99%90)
+        - [Docker 容器镜像](#docker-%E5%AE%B9%E5%99%A8%E9%95%9C%E5%83%8F)
+        - [Docker layer](#docker-layer)
+        - [一个例子](#%E4%B8%80%E4%B8%AA%E4%BE%8B%E5%AD%90)
+        - [Docker volume](#docker-volume)
+        - [总结](#%E6%80%BB%E7%BB%93)
 
-Docker 之前的 PaaS 产品，Cloud Foundary：
-
-- 一套应用的打包和分发机制
-- 为每种编程语言定义一种打包格式，将可执行文件和启动脚本打包
-- 为每个应用创建一个 “沙盒” 的隔离环境
-
-Cloud Foundary：用户就必须为每种语言、每种框架，甚至每个版本的应用维护一个打好的包
-
-Docker 成功的关键是：镜像。
-大多数 Docker 镜像是操作系统 + 应用 + 脚本，因此可以保证本地、云端环境完全一致，不需要额外配置和修改
-
-Docker 解决了环境一致性的问题，但是没有解决大规模部署应用的问题。“容器编排” 比容器本身更有价值。
-
+<!-- /TOC -->
 ### Docker 实现方法
 
 容器是一种特殊的进程。操作系统在启动进程时通过设置一些参数，实现了资源隔离和限制
@@ -88,3 +83,157 @@ $ docker image inspect ubuntu:latest
 - init 层。Docker 项目单独生成的内部层。保存 `/etc/hosts`、`/etc/resolv.conf` 等信息。为什么需要 init 层？因为用户需要修改这些信息，并且这些配置只对当前容器有效，不希望提交这些信息。（docker commit 只会提交读写层）
 
 最终，这 7 个层都被联合挂载到 `/var/lib/docker/aufs/mnt` 目录下，表现为一个完整的 Ubuntu 操作系统供容器使用。
+
+### 一个例子
+
+在 Docker 里运行 web 应用，通过宿主机来访问服务
+
+应用部分，`app.py`
+
+```python
+from flask import Flask
+import socket
+import os
+
+app = Flask(__name__)
+
+@app.route('/')
+def hello():
+    html = "<h3>Hello {name}!</h3>" \
+           "<b>Hostname:</b> {hostname}<br/>"
+    return html.format(name=os.getenv("NAME", "world"), hostname=socket.gethostname())
+
+if __name__ == "__main__":
+    app.run(host='0.0.0.0', port=80)
+```
+
+```dockerfile
+# 使用官方提供的 Python 开发镜像作为基础镜像
+FROM python:3.6-slim-jessie
+
+# 将工作目录切换为 / app
+WORKDIR /app
+
+# 将当前目录下的所有内容复制到 / app 下
+ADD . /app
+
+# 使用 pip 命令安装这个应用所需要的依赖
+#RUN pip install --trusted-host pypi.python.org -r requirements.txt
+RUN pip install /app/whl/*.whl
+
+# 允许外界访问容器的 80 端口
+EXPOSE 80
+
+# 设置环境变量
+ENV NAME World
+
+# 设置容器进程为：python app.py，即：这个 Python 应用的启动命令
+CMD ["python", "app.py"]
+```
+
+dockerfile 的一些关键字：
+
+- `FROM`：指定镜像
+- `RUN`：执行 shell 命令
+- `WORKDIR`：指定后面语句的工作目录
+- `CMD`：等价于 `docker run <image> python app.py`
+- `ENTRYPOINT`：将 `CMD` 作为执行参数，执行格式是 `ENTRYPOINT CMD`。Docker 默认会提供一个 `/bin/sh -c` 的 `ENTRYPOINT`。
+
+设置 `Dockerfile`、`app.py`、`requirements.txt` 之后，就可以制作 Docker 镜像，相当于 Docker 使用基础镜像启动了一个容器，然后在容器中依次执行 Dockerfile 中的原语。
+
+```bash
+# 使用 -t 为镜像设置 tag
+docker build -t helloworld .
+```
+
+Dockerfile 的每个原语执行后，都会生成一个对应的镜像层
+
+启动容器。因为 Dockerfile 写了 `CMD`，所以这里不用写启动命令
+
+```bash
+docker run -p 4000:80 helloworld
+```
+
+如果要上传镜像到 DockerHub，需要给镜像起一个完整名字，然后上传
+
+```bash
+docker tag helloworld <user>/helllworld:v1
+docker push <user>/helllworld:v1
+```
+
+如果需要将 running 的容器提交为镜像，需要用 `docker commit`
+
+```bash
+$ docker exec -it 4ddf4638572d /bin/sh
+# 在容器内部新建了一个文件
+root@4ddf4638572d:/app# touch test.txt
+root@4ddf4638572d:/app# exit
+
+#将这个新建的文件提交到镜像中保存
+$ docker commit 4ddf4638572d geektime/helloworld:v2
+```
+
+进入容器内部，需要用 `docker exec` 命令。
+`exec` 的原理是：宿主机上有记录进程的 namespace 信息的文件，位于 `/proc/<pid>/ns`。通过加入到进程已有的 namespace 中，可以 “进入” 进程所在容器
+
+### Docker volume
+
+通过 volume 机制，可以将宿主机上指定的目录或者文件，挂载到容器里面进行读取和修改操作。
+
+```bash
+# 创建一个临时目录 /var/lib/docker/volumes/[VOLUME_ID]/_data，然后把它挂载到容器的 /test 目录
+docker run -v /test ...
+# 把宿主机的一个目录挂载进了容器的 /test 目录
+docker run -v /home:/test ...
+```
+
+整个过程：mount namespace -> 将宿主机目录挂载到指定容器目录 -> chroot
+容器后续对 / test 目录的修改，不会被 `docker commit` 提交，这是因为 volume 直接映射到宿主机目录，文件的修改都发生在宿主机目录中，而非容器的可读写层。
+但是最后 commit 的镜像会多一个 `/test` 空目录。
+
+### 总结
+
+一个 “容器”，实际上是一个由 Linux Namespace、Linux Cgroups 和 rootfs 三种技术构建出来的进程的隔离环境。
+
+一个正在运行的 Linux 容器，其实可以被 “一分为二” 地看待：
+
+- 一组联合挂载在 /var/lib/docker/aufs/mnt 上的 rootfs，这一部分我们称为 “容器镜像”（Container Image），是容器的静态视图
+- 一个由 Namespace+Cgroups 构成的隔离环境，这一部分我们称为 “容器运行时”（Container Runtime），是容器的动态视图
+
+对于 “开发 - 测试 - 发布” 的流程，其实是前面的 “静态视图” 镜像更关键。因此从商业价值来说，容器编排比容器更有价值。
+
+k8s 架构：
+
+![alt text](img/image-2.png)
+
+Master
+
+- `kube-apiserver`：API 服务
+- `kube-scheduler`：调度
+- `kube-controller-manager`：容器编排
+- `etcd`：持久化存储，保存 api server 处理后的数据
+
+Node
+
+- `kubectl` 组件：
+  - 通过 Container Runtime Interface (CRI) 和容器交互。容器运行时通过 OCI 和底层 OS 交互。
+  - 通过 gRPC 协议和 Device Plugin 插件交互。这个插件是 K8S 哦你过来管理 GPU 等设备的
+  - 调用网络插件（container network interface，CNI）、存储插件（container storage interface，CSI）为容器配置网络、持久化存储
+
+K8S 项目着重解决的问题：
+
+运行在大规模集群各种任务之间存在的关系。例如，web 应用和 db 的访问关系、负载均衡和后端服务的代理关系、门户应用和授权组件的调用关系。
+
+K8S 的设计思想：
+
+用统一方式定义任务之间的各种关系，并准备支持更多种类的关系。
+
+- 例如对 “紧密交互” 的关系，即需要频繁交互访问的服务，K8S 会将这些容器划分到一个 Pod，Pod 中的容器共享 namespace 和 volume，从而能高效交换信息。
+
+- 对类似 web 应用和 DB 的访问关系，K8S 提供 Service 服务，service 作为 pod 代理，提供固定 ip 地址
+
+K8S 的使用方法：
+
+- 用 “编排对象” 描述应用，例如 Pod、Job、CronJob
+- 定义 “服务对象”，例如 Service、Secret、Horizontal Pod Autoscaler，负责具体功能
+
