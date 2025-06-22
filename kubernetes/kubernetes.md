@@ -2,16 +2,25 @@
 
 <!-- TOC -->
 
-- [深入剖析 Kubernetes](#%E6%B7%B1%E5%85%A5%E5%89%96%E6%9E%90-kubernetes)
-        - [Docker 实现方法](#docker-%E5%AE%9E%E7%8E%B0%E6%96%B9%E6%B3%95)
-        - [Docker 的局限](#docker-%E7%9A%84%E5%B1%80%E9%99%90)
-        - [Docker 容器镜像](#docker-%E5%AE%B9%E5%99%A8%E9%95%9C%E5%83%8F)
-        - [Docker layer](#docker-layer)
-        - [一个例子](#%E4%B8%80%E4%B8%AA%E4%BE%8B%E5%AD%90)
-        - [Docker volume](#docker-volume)
-        - [总结](#%E6%80%BB%E7%BB%93)
+- [深入剖析 Kubernetes](#深入剖析-kubernetes)
+  - [Docker](#docker)
+    - [Docker 实现方法](#docker-实现方法)
+    - [Docker 的局限](#docker-的局限)
+    - [Docker 容器镜像](#docker-容器镜像)
+    - [Docker layer](#docker-layer)
+    - [一个例子](#一个例子)
+    - [Docker volume](#docker-volume)
+    - [总结](#总结)
+  - [Kubernetes](#kubernetes)
+    - [Intro](#intro)
+    - [K8S 部署](#k8s-部署)
 
 <!-- /TOC -->
+<!-- /TOC -->
+<!-- /TOC -->
+
+## Docker
+
 ### Docker 实现方法
 
 容器是一种特殊的进程。操作系统在启动进程时通过设置一些参数，实现了资源隔离和限制
@@ -202,6 +211,10 @@ docker run -v /home:/test ...
 
 对于 “开发 - 测试 - 发布” 的流程，其实是前面的 “静态视图” 镜像更关键。因此从商业价值来说，容器编排比容器更有价值。
 
+## Kubernetes
+
+### Intro
+
 k8s 架构：
 
 ![alt text](img/image-2.png)
@@ -237,3 +250,34 @@ K8S 的使用方法：
 - 用 “编排对象” 描述应用，例如 Pod、Job、CronJob
 - 定义 “服务对象”，例如 Service、Secret、Horizontal Pod Autoscaler，负责具体功能
 
+### K8S 部署
+
+K8S 的各个组件是二进制文件，需要编写对应配置文件、自启动脚本，为 kube-apiserver 配置授权文件等工作
+
+K8S 部署工具：kubeadm
+部署方式：宿主机上运行 kubelet，用 docker 运行其他组件
+`kubeadm init` 部署步骤：
+
+- 安装前检查：内核版本、hostname 是否标准、K8S 二进制文件版本，等等
+- 生成证书，kube-apiserver 默认通过 HTTPS 服务
+- 生成配置文件：为其他组件生成访问 apiserver 的配置文件
+- 为 master 其他组件生成 pod 配置：master 的三个组件 `kube-apiserver`、`kube-controller-manager`、`kube-scheduler` 都用 pod 运行。`kubelet` 启动时会在 master 上面启动它们
+- 生成 etcd 的 pod 配置
+
+`kubectl` 在设计上是独立的组件，其他的 master 组件更像是辅助的容器。
+
+最后 master 各组件的 pod yaml 类似：
+
+```bash
+ls /etc/kubernetes/manifests/
+etcd.yaml  kube-apiserver.yaml  kube-controller-manager.yaml  kube-scheduler.yaml
+```
+
+master 各组件运行起来之后，kubeadm 会生成一个 bootstrap token。其他节点安装 `kubeadm` 和 `kubelet` 之后可以通过 `kubeadm join` 加入集群。
+
+为什么需要token？
+
+节点加入集群时需要从apiserver获取证书，`kubeadm`在访问apiserver时使用token验证
+
+K8S部署工具：kubeadm、kops、SaltStack
+选择生产环境的部署工具时，需要考虑高可用性。例如etcd、master组件应该是多节点集群
