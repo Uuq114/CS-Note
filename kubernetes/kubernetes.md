@@ -14,6 +14,12 @@
   - [Kubernetes](#kubernetes)
     - [Intro](#intro)
     - [K8S 部署](#k8s-部署)
+    - [K8S 使用](#k8s-使用)
+
+<!-- /TOC -->
+    - [Intro](#intro)
+    - [K8S 部署](#k8s - 部署)
+    - [K8Sshi](#k8sshi)
 
 <!-- /TOC -->
 <!-- /TOC -->
@@ -275,9 +281,36 @@ etcd.yaml  kube-apiserver.yaml  kube-controller-manager.yaml  kube-scheduler.yam
 
 master 各组件运行起来之后，kubeadm 会生成一个 bootstrap token。其他节点安装 `kubeadm` 和 `kubelet` 之后可以通过 `kubeadm join` 加入集群。
 
-为什么需要token？
+为什么需要 token？
 
-节点加入集群时需要从apiserver获取证书，`kubeadm`在访问apiserver时使用token验证
+节点加入集群时需要从 apiserver 获取证书，`kubeadm` 在访问 apiserver 时使用 token 验证
 
-K8S部署工具：kubeadm、kops、SaltStack
-选择生产环境的部署工具时，需要考虑高可用性。例如etcd、master组件应该是多节点集群
+K8S 部署工具：kubeadm、kops、SaltStack
+选择生产环境的部署工具时，需要考虑高可用性。例如 etcd、master 组件应该是多节点集群
+
+### K8S 使用
+
+使用 `yaml` 文件记录容器的定义、参数、配置，使用 `kubectl create -f <config>` 运行
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+spec:
+  selector:
+    matchLabels:
+      app: nginx
+  replicas: 2
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.7.9
+        ports:
+        - containerPort: 80
+```
+
