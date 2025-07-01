@@ -314,3 +314,130 @@ spec:
         - containerPort: 80
 ```
 
+上面的 yaml 定义了一个 pod 模板，pod 里面只有一个容器。容器镜像是 `nginx:1.7.9`，监听 80 端口。
+这里使用一种 API 对象（Deployment）管理另一种 API 对象（Pod），称为控制器模式（controller pattern）。
+
+pod 是 K8S 中的容器，一个应用可以有多个容器。（豌豆荚里面有多个豆子）
+
+一个 API 对象的定义，可以分 Metadata 和 Spec 两个部分，分别存放对象的元数据、定义（描述功能）
+
+常用命令：
+
+```bash
+# 按照配置文件运行 K8S
+$ kubectl create -f nginx-deplyment.yaml
+
+# kubectl get 获取指定 API 对象，用 - l 匹配 pod
+$ kubectl get pods -l app=hello-minikube
+NAME                           READY   STATUS    RESTARTS   AGE
+hello-minikube-b8f9497-kchsx   1/1     Running   0          4d12h
+
+# kubectl describe 查看 API 对象细节，events 部分会记录操作历史，例如调度、拉取镜像、创建等。也有可能是 none
+$ kubectl describe pod hello-minikube-b8f9497-kchsx
+Name:             hello-minikube-b8f9497-kchsx
+Namespace:        default
+Priority:         0
+Service Account:  default
+Node:             minikube/192.168.49.2
+Start Time:       Thu, 26 Jun 2025 01:38:16 +0800
+Labels:           app=hello-minikube
+                  pod-template-hash=b8f9497
+Annotations:      <none>
+Status:           Running
+IP:               10.244.0.44
+IPs:
+  IP:           10.244.0.44
+Controlled By:  ReplicaSet/hello-minikube-b8f9497
+Containers:
+  echo-server:
+    Container ID:   docker://354038c1464004eaae815eaf5ab07ed7bee1ef282e8f6a930886497bf4cc4e9a
+    Image:          docker.io/kicbase/echo-server:latest
+    Image ID:       docker://sha256:9056ab77afb8e18e04303f11000a9d31b3f16b74c59475b899ae1b342d328d30
+    Port:           <none>
+    Host Port:      <none>
+    State:          Running
+      Started:      Thu, 26 Jun 2025 01:38:17 +0800
+    Ready:          True
+    Restart Count:  0
+    Environment:    <none>
+    Mounts:
+      /var/run/secrets/kubernetes.io/serviceaccount from kube-api-access-nxw7g (ro)
+Conditions:
+  Type                        Status
+  PodReadyToStartContainers   True
+  Initialized                 True
+  Ready                       True
+  ContainersReady             True
+  PodScheduled                True
+Volumes:
+  kube-api-access-nxw7g:
+    Type:                    Projected (a volume that contains injected data from multiple sources)
+    TokenExpirationSeconds:  3607
+    ConfigMapName:           kube-root-ca.crt
+    Optional:                false
+    DownwardAPI:             true
+QoS Class:                   BestEffort
+Node-Selectors:              <none>
+Tolerations:                 node.kubernetes.io/not-ready:NoExecute op=Exists for 300s
+                             node.kubernetes.io/unreachable:NoExecute op=Exists for 300s
+Events:                      <none>
+
+# kubectl replace 应用修改后的配置，例如更新镜像
+$ kubectl replace -f nginx-deployment.yaml
+
+# （更建议）统一用 kubectl apply 进行 K8S 对象的创建、更新
+$ kubectl apply -f nginx-deployment.yaml
+
+# kubectl delete 从 K8S 集群删除 depployment
+$ kubectl delete -f nginx-deployment.yaml
+
+# kubectl exec 进入 pod 中
+$ kubectl exec -it nginx-deployment-5c678cfb6d-lg9lw -- /bin/bash
+```
+
+指定挂载目录
+
+pod 中的容器使用 `volumeMounts` 声明要挂载的 volume，用 `mountPath` 表定义容器内的 volume 目录。
+
+下面配置文件中，`emptyDir` 表示 K8S 在宿主机上创建临时目录，挂载到 nginx 容器的 `/usr/share/nginx/html` 目录
+
+![alt text](img/image-3.png)
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+spec:
+  selector:
+    matchLabels:
+      app: nginx
+  replicas: 2
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.8
+        ports:
+        - containerPort: 80
+        volumeMounts:
+        - mountPath: "/usr/share/nginx/html"
+          name: nginx-vol
+      volumes:
+      - name: nginx-vol
+        emptyDir: {}
+```
+
+使用 `hostPath` 挂载宿主机目录
+
+```yaml
+ ...
+    volumes:
+      - name: nginx-vol
+        hostPath:
+          path:  "/var/data"
+```
+
