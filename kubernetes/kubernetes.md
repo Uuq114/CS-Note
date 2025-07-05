@@ -15,7 +15,10 @@
     - [Intro](#intro)
     - [K8S 部署](#k8s-部署)
     - [K8S 使用](#k8s-使用)
+    - [Pod](#pod)
 
+<!-- /TOC -->
+<!-- /TOC -->
 <!-- /TOC -->
     - [Intro](#intro)
     - [K8S 部署](#k8s - 部署)
@@ -317,7 +320,7 @@ spec:
 上面的 yaml 定义了一个 pod 模板，pod 里面只有一个容器。容器镜像是 `nginx:1.7.9`，监听 80 端口。
 这里使用一种 API 对象（Deployment）管理另一种 API 对象（Pod），称为控制器模式（controller pattern）。
 
-pod 是 K8S 中的容器，一个应用可以有多个容器。（豌豆荚里面有多个豆子）
+pod 是 K8S 中 “最小” 的 API 对象，等价于一个应用，可以有多个容器。（豌豆荚里面有多个豆子）
 
 一个 API 对象的定义，可以分 Metadata 和 Spec 两个部分，分别存放对象的元数据、定义（描述功能）
 
@@ -440,4 +443,82 @@ spec:
         hostPath:
           path:  "/var/data"
 ```
+
+### Pod
+
+调度：K8S 的调度器根据 Pod 的资源需求 “成组调度” 的，而非根据每个容器的需求单独计算。
+
+Pod 只是逻辑概念，Pod 是一组共享某些资源的容器。
+
+Pod 实现：
+
+infra 容器是第一个创建的容器，用户定义的容器都通过 join namespace 的方式和 infra 容器关联。
+
+![alt text](img/image-4.png)
+
+pod 管理所有容器的网络配置、volume 等。例如下面两个容器挂载了同一个 volume
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: two-containers
+spec:
+  restartPolicy: Never
+  volumes:
+  - name: shared-data
+    hostPath:
+      path: /data
+  containers:
+  - name: nginx-container
+    image: nginx
+    volumeMounts:
+    - name: shared-data
+      mountPath: /usr/share/nginx/html
+  - name: debian-container
+    image: debian
+    volumeMounts:
+    - name: shared-data
+      mountPath: /pod-data
+    command: ["/bin/sh"]
+    args: ["-c", "echo Hello from the debian container> /pod-data/index.html"]
+```
+
+在实际使用 pod 中，可以用一个辅助容器完成独立于主进程（主容器）的任务，称为 sidecar。
+
+例如：
+
+- Java Web 的 WAR 包需要放到 Tomcat 的 webapps 目录下运行。这时可以将 WAR 包和 Tomcat 做成两个镜像。
+
+这里 init container 类型的 WAR 包容器启动后，执行 `cp` 之后会退出
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: javaweb-2
+spec:
+  initContainers:
+  - image: geektime/sample:v2
+    name: war
+    command: ["cp", "/sample.war", "/app"]
+    volumeMounts:
+    - mountPath: /app
+      name: app-volume
+  containers:
+  - image: geektime/tomcat:7.0
+    name: tomcat
+    command: ["sh","-c","/root/apache-tomcat-7.0.42-v2/bin/start.sh"]
+    volumeMounts:
+    - mountPath: /root/apache-tomcat-7.0.42-v2/webapps
+      name: app-volume
+    ports:
+    - containerPort: 8080
+      hostPort: 8001
+  volumes:
+  - name: app-volume
+    emptyDir: {}
+```
+
+- 需要收集容器位于 `/var/log` 目录中的日志。这时可以让 sidecar 容器挂载相同 volume，并不断读取容器转发到 ES 或者 MongoDB
 
