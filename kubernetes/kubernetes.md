@@ -16,7 +16,9 @@
     - [K8S 部署](#k8s-部署)
     - [K8S 使用](#k8s-使用)
     - [Pod](#pod)
+    - [Pod 进阶](#pod-进阶)
 
+<!-- /TOC -->
 <!-- /TOC -->
 <!-- /TOC -->
 <!-- /TOC -->
@@ -522,3 +524,223 @@ spec:
 
 - 需要收集容器位于 `/var/log` 目录中的日志。这时可以让 sidecar 容器挂载相同 volume，并不断读取容器转发到 ES 或者 MongoDB
 
+Pod-container 的关系类似于虚拟机 - 进程的关系，和调度、网络、存储、namespace 相关的属性，都是 Pod 级别的。
+
+Pod 中几个重要字段：
+
+- `NodeSelector`。可以将 pod 和 node 绑定，例如让 pod 运行在有 `disktype: ssd` label 上的节点
+
+```yaml
+spec:
+  nodeSelector:
+    disktype: ssd
+```
+
+- `NodeName`。表示 pod 被调度的节点名，一般是自动设置，如果手动设置，相当于手动指定调度节点，可用于测试
+- `HostAliases`。定义 Pod 的 `/etc/hosts` 内容
+
+```yaml
+spec:
+  hostAliases:
+  - ip: "10.1.2.3"
+    hostnames:
+    - "foo.remote"
+    - "bar.remote"
+```
+
+生成的 hosts 文件类似：
+
+```
+cat /etc/hosts
+# Kubernetes-managed hosts file.
+127.0.0.1 localhost
+...
+10.244.135.10 hostaliases-pod
+10.1.2.3 foo.remote
+10.1.2.3 bar.remote
+```
+
+Container 中几个重要字段：
+
+- `ImagePullPolicy`。默认是 `Always`，即每次创建 Pid 都重新拉取镜像。其他设置项为 `Never`、`IfNotPresent`
+- `Lifecycle`。定义 container lifecycle hooks
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: lifecycle-demo
+spec:
+  containers:
+  - name: lifecycle-demo-container
+    image: nginx
+    lifecycle:
+      postStart:
+        exec:
+          command: ["/bin/sh", "-c", "echo Hello from the postStart handler> /usr/share/message"]
+      preStop:
+        exec:
+          command: ["/usr/sbin/nginx","-s","quit"]
+```
+
+`postStart`：容器启动后执行，和 ENTRYPOINT 异步并发执行
+`preStop`：容器结束前执行，执行完容器才结束
+
+Pod 的各种状态：`Pending`、`Running`、`Succeeded`、`Failed`、`Unknown`
+Pod 的 `status.conditions` 会描述造成当前 status 的原因，值包括 `PodScheduled`、`Ready`、`Initialized`、`Unschedulable`。
+例如，Pod 的 status 为 `Pending`，condition 是 `Unschedulable`，那么表示调度出现问题
+
+### Pod 进阶
+
+Projected Volume：投射数据卷。用来给容器提供预先定义好的数据
+
+类型：
+
+- Secret。让 container 能方便使用保密数据。
+
+需要先在 k8s 创建 secret 对象，再在 container 中引用
+
+```bash
+$ cat ./username.txt
+admin
+$ cat ./password.txt
+c1oudc0w!
+
+$ kubectl create secret generic user --from-file=./username.txt
+$ kubectl create secret generic pass --from-file=./password.txt
+
+# 查看 secret 对象
+$ kubectl get secrets
+NAME   TYPE     DATA   AGE
+pass   Opaque   1      7s
+user   Opaque   1      21s
+```
+
+或者通过 yaml 文件创建 secret 对象。这里数据都是经过 base64 转码的，不是明文
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: mysecret
+type: Opaque
+data:
+  user: YWRtaW4=
+  pass: MWYyZDFlMmU2N2Rm
+```
+
+再在 container yaml 中引用 secret
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-projected-volume
+spec:
+  containers:
+  - name: test-secret-volume
+    image: busybox
+    args:
+    - sleep
+    - "86400"
+    volumeMounts:
+    - name: mysql-cred
+      mountPath: "/projected-volume"
+      readOnly: true
+  volumes:
+  - name: mysql-cred
+    projected:
+      sources:
+      - secret:
+          name: user
+      - secret:
+          name: pass
+```
+
+这些 secret 实际存储在 etcd 中，在更新 secret 之后，挂载到容器的 secret 也会更新
+
+- ConfigMap。保存不需要加密的配置信息。和 secret 类似，也可以从 `kubectl create configmap` 或者 yaml 文件创建。`kubectl get -o yaml` 可以将指定 Pod API 对象以 yaml 形式展示
+- Downward API。让 Pod 的容器能直接获取到 Pod 对象信息。注意只能获取容器进程启动之前能确定的信息，如果是容器进程启动之后的信息（如容器进程 pid），那么需要在 pod 中定义一个 sidecar 容器
+
+例如，这里将 Pod 的 `metadata.labels` 暴露给容器，挂载到容器中的 `/etc/podinfo/labels`
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-downwardapi-volume
+  labels:
+    zone: us-est-coast
+    cluster: test-cluster1
+    rack: rack-22
+spec:
+  containers:
+    - name: client-container
+      image: k8s.gcr.io/busybox
+      command: ["sh", "-c"]
+      args:
+      - while true; do
+          if [[-e /etc/podinfo/labels]]; then
+            echo -en '\n\n'; cat /etc/podinfo/labels; fi;
+          sleep 5;
+        done;
+      volumeMounts:
+        - name: podinfo
+          mountPath: /etc/podinfo
+          readOnly: false
+  volumes:
+    - name: podinfo
+      projected:
+        sources:
+        - downwardAPI:
+            items:
+              - path: "labels"
+                fieldRef:
+                  fieldPath: metadata.labels
+```
+
+- ServiceAccountToken。特殊的 secret，保存 service account 的授权信息。k8s 能控制每个 service account 对 k8s api 的权限。k8s 会为每个 pod 自动挂载一个默认的 service account。
+
+```bash
+$ kubectl describe pod hello-minikube-b8f9497-kchsx
+...
+Volumes:
+  kube-api-access-nxw7g:
+    Type:                    Projected (a volume that contains injected data from multiple sources)
+    TokenExpirationSeconds:  3607
+    ConfigMapName:           kube-root-ca.crt
+    Optional:                false
+    DownwardAPI:             true
+```
+
+k8s 将容器镜像是否运行作为表示容器状态的依据，可以为 Pod 中容器定义健康检查探针，让探针返回值表示容器状态。
+
+这个容器会周期性被检测为健康 / 异常。在容器被报告为异常后，k8s 会自动重建这个容器。
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    test: liveness
+  name: test-liveness-exec
+spec:
+  containers:
+  - name: liveness
+    image: busybox
+    args:
+    - /bin/sh
+    - -c
+    - touch /tmp/healthy; sleep 30; rm -rf /tmp/healthy; sleep 600
+    livenessProbe:
+      exec:
+        command:
+        - cat
+        - /tmp/healthy
+      initialDelaySeconds: 5
+      periodSeconds: 5
+```
+
+可以通过设置 `restartPolicy` 改变 Pod 恢复策略，可选值：`Always`（默认）、`OnFailure`、`Never`
+
+Pod 的恢复过程不会改变 Piod 在哪个节点运行，除非 `pod.spec.node` 改变。即使宿主机宕机了，pod 也不会主动迁移到其他节点。如果要让 pod 能被迁移到其他系欸但，需要用 Deployment 来管理 pod
