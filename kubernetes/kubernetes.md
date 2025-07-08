@@ -17,7 +17,9 @@
     - [K8S 使用](#k8s-使用)
     - [Pod](#pod)
     - [Pod 进阶](#pod-进阶)
+    - [](#)
 
+<!-- /TOC -->
 <!-- /TOC -->
 <!-- /TOC -->
 <!-- /TOC -->
@@ -716,6 +718,7 @@ Volumes:
 k8s 将容器镜像是否运行作为表示容器状态的依据，可以为 Pod 中容器定义健康检查探针，让探针返回值表示容器状态。
 
 这个容器会周期性被检测为健康 / 异常。在容器被报告为异常后，k8s 会自动重建这个容器。
+除了执行命令，`livenessProbe` 也可以写成 HTTP/TCP 的形式，暴露一个健康检查 URL
 
 ```yaml
 apiVersion: v1
@@ -741,6 +744,15 @@ spec:
       periodSeconds: 5
 ```
 
-可以通过设置 `restartPolicy` 改变 Pod 恢复策略，可选值：`Always`（默认）、`OnFailure`、`Never`
+可以通过设置 `restartPolicy` 改变 Pod 恢复策略，可选值：
 
-Pod 的恢复过程不会改变 Piod 在哪个节点运行，除非 `pod.spec.node` 改变。即使宿主机宕机了，pod 也不会主动迁移到其他节点。如果要让 pod 能被迁移到其他系欸但，需要用 Deployment 来管理 pod
+- `Always`，默认值。只要容器不在运行状态，就重启
+- `OnFailure`。只在容器异常时重启
+- `Never`。从不重启容器。可以用来保护容器退出现场
+
+Pod 的恢复过程不会改变 Pod 在哪个节点运行，除非 `pod.spec.node` 改变。即使宿主机宕机了，pod 也不会主动迁移到其他节点。如果要让 pod 能被迁移到其他系欸但，需要用 Deployment 来管理 pod
+
+- 只要 `restartPolicy` 不是 `Never`，那么 Pod 会在保持 Running 状态下重启容器。否则，Pod 会进入 Failed 状态
+- 如果 Pod 有多个容器，并且所有容器都异常了，Pod 才会从 Running 变成 Failed
+
+### 
