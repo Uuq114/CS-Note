@@ -17,7 +17,7 @@
     - [K8S 使用](#k8s-使用)
     - [Pod](#pod)
     - [Pod 进阶](#pod-进阶)
-    - [](#)
+    - [“控制器” 模型](#控制器-模型)
 
 <!-- /TOC -->
 <!-- /TOC -->
@@ -755,4 +755,32 @@ Pod 的恢复过程不会改变 Pod 在哪个节点运行，除非 `pod.spec.nod
 - 只要 `restartPolicy` 不是 `Never`，那么 Pod 会在保持 Running 状态下重启容器。否则，Pod 会进入 Failed 状态
 - 如果 Pod 有多个容器，并且所有容器都异常了，Pod 才会从 Running 变成 Failed
 
-### 
+### “控制器” 模型
+
+controller 负责维护集群状态，模式是 control loop（reconcile loop/sync loop），即循环比对实际状态和期望状态，并做出调整。K8S 中的 `kube-controller-manager` 组件包含很多 controller
+
+以下面的 yaml 文件为例，deployment 的 template 部分是 Pod 的定义，称为 PodTemplate
+
+```yaml
+# controller定义
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+spec:
+  selector:
+    matchLabels:
+      app: nginx
+  replicas: 2
+  # 被控制对象
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.7.9
+        ports:
+        - containerPort: 80
+```
