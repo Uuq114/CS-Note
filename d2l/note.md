@@ -205,3 +205,21 @@ z.sum().backward()
 ### 概率
 
 机器学习就是做出预测，需要考虑在所有可行的行为下获得高奖励的概率。
+
+```py
+# 定义概率向量，以及采样
+fair_probs = torch.ones([6]) / 6
+multinomial.Multinomial(1, fair_probs).sample()
+
+# 同时抽取多个样本，计算相对概率
+count = multinomial.Multinomial(100, fair_probs).sample()
+count / 100
+> tensor([0.1550, 0.1820, 0.1770, 0.1710, 0.1600, 0.1550])
+```
+
+贝叶斯定理：
+
+![alt text](img/image-2.png)
+
+## 线性神经网络
+
