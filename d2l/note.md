@@ -19,7 +19,7 @@ x = torch.arange(12)
 x.shape
 > torch.Size([12])
 
-# 改变 tensor 形状
+# 改变 tensor 形状，原来的 x 不变
 x.reshape(3, 4)
 x
 > tensor([[0,  1,  2,  3],
@@ -94,10 +94,114 @@ print(inputs)
   2       4.0           0          1
   3       3.0           0          1
 
-# 转换为tensor格式
+# 转换为 tensor 格式
 x = torch.tensor(inputs.to_numpy(dtype=float))
 y = torch.tensor(outputs.to_numpy(dtype=float))
 X, y
 ```
 
 ### 线性代数
+
+标量：只有一个元素的 tensor
+
+向量是标量的推广，矩阵是向量的推广。
+tensor 张量可以描述任意数量轴的 n 维数组
+
+```py
+# 矩阵的转置
+A.T
+
+# 矩阵按照元素的乘法（对应位置元素相乘），称为 Hadamard 积
+A * B
+
+# 对 tensor 求和、按行 / 列求和
+A.sum() # 生成标量
+A.sum(axis=[0, 1]) # 生成 tensor
+A_sum_axis0 = A.sum(axis=0) # 生成 tensor
+A_sum_axis1 = A.sum(axis=1) # 生成 tensor
+
+# 平均值
+A.mean(), A.sum() / A.numel()
+A.mean(axis=0), A.sum(axis=0) / A.shape[0]
+
+# 点积
+torch.dot(x, y)
+
+# 矩阵 - 向量的积
+torch.mv(A, x)
+
+# 矩阵乘
+torch.mm(A, B)
+
+# 范数，表示向量的大小
+torch.norm(u) # L2 范数
+torch.abs(u).sum() # L1 范数
+
+# 矩阵的 Frobenius 范数
+torch.norm(torch.ones(4, 9))
+```
+
+![alt text](img/image.png)
+
+很多优化问题，例如最大化概率、最小化距离，都可以使用范数表示
+
+### 微积分
+
+梯度：一个向量，表示一个多元函数在某一点变化率最快的方向
+
+对函数 $f(x_1,x_2,...,x_n)$，其梯度定义为：$\nabla f = \left( \frac{\partial f}{\partial x_1}, \frac{\partial f}{\partial x_2}, \dots, \frac{\partial f}{\partial x_n} \right)$
+
+梯度指向函数值上升最快的防线。梯度的模（长度）表示该方向的变化率大小
+
+![alt text](img/image-1.png)
+
+### 自动微分
+
+深度学习框架通过自动微分加快求导。
+
+一个标量函数关于向量 $\vec{x}$ 的梯度是向量，有着 $\vec{x}$ 相同的形状。
+例如，对函数 $y=2\vec{x}^T\vec{x}$，关于列向量 $\vec{x}$ 求导
+
+```py
+x = torch.arange(4.0, requireds_grad=True)
+x.grad # 默认是 None
+y = 2 * torch.dot(x, x)
+y.backward()
+x.grad
+> tensor([0.,  4.,  8., 12.])
+```
+
+对另一个函数：
+
+```py
+x.grad.zero_() # 在默认情况下，PyTorch 会累积梯度，我们需要清除之前的值
+y = x.sum()
+y.backward()
+x.grad
+> tensor([1., 1., 1., 1.])
+```
+
+当 y 不是标量时，向量 y 关于向量 x 的导数的最自然解释是一个矩阵。对于高阶和高维的 y 和 x，求导的结果可以是一个高阶张量。
+
+```py
+x.grad.zero_()
+y = x * x
+# 等价于 y.backward(torch.ones(len(x)))
+y.sum().backward()
+x.grad
+```
+
+下面是反向传播函数计算 z=u*x 关于 x 的偏导数的例子，u 作为常数处理
+
+```py
+x.grad.zero_()
+y = x * x
+u = y.detach()
+z = u * x
+
+z.sum().backward()
+```
+
+### 概率
+
+机器学习就是做出预测，需要考虑在所有可行的行为下获得高奖励的概率。
