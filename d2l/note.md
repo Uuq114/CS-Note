@@ -336,10 +336,97 @@ MNIST，fashion-MNIST
 
 ![alt text](img/image-13.png)
 
-K折交叉验证：
-训练数据不够时使用的方法。将原始数据分成k份，执行k次训练和验证。每次在k-1个子集上训练，在剩余一个子集上验证。最后取平均训练、验证误差
+K 折交叉验证：
+训练数据不够时使用的方法。将原始数据分成 k 份，执行 k 次训练和验证。每次在 k-1 个子集上训练，在剩余一个子集上验证。最后取平均训练、验证误差
 
 数据集大小：至少要数千个训练样本，深度学习的效果才优于线性模型
 
-权重衰减：一种常用的正则化技术，也称为L2正则化。通过函数与零的距离来衡量函数的复杂度
+权重衰减：一种常用的正则化技术，也称为 L2 正则化。通过函数与零的距离来衡量函数的复杂度。
 
+一种简单方法是，通过线性函数 $f(\vec{x})=\vec{w}^T\vec{x}$ 的权重向量的 L2 范数 $\Vert \vec{w} \Vert^2$。将范数作为惩罚项之后，训练目标为最小化预测损失和惩罚项之和，这样可以在预测损失和权重向量之间平衡，避免过拟合。
+
+例如，线性回归的损失可以表示为：$L(\vec{w},b)+\frac{\lambda}{2}\Vert \vec{w} \Vert^2$，加 $\frac{1}{2}$ 是为了求导方便
+
+- 岭回归（ridge regression）：将权重向量的 L2 范数加到惩罚项，例如线性回归中，加入回归系数的 L2 范数 $\sum \beta_j^2$
+- 套索回归（lasso regression）：将 L1 范数（绝对值之和）加到惩罚项，$\sum \lvert \beta_j \rvert$
+
+对于使用 L2 范数的惩罚项，学习算法会偏向于在大量特征上分布均衡的权重。对 L1 惩罚，权重会集中在一小部分特征上，其他权重被清除为 0
+
+pytorch 中使用权重衰减：
+
+在优化器中设置 `weight_decay` 参数（权重衰减的系数 $\lambda$），对所有可训练参数使用 L2 正则化
+
+```py
+import torch
+import torch.nn as nn
+import torch.optim as optim
+
+# 定义模型
+model = nn.Linear(10, 1)  # 示例模型
+
+# 定义损失函数
+criterion = nn.MSELoss()
+
+# 定义优化器，并启用 weight_decay
+optimizer = optim.SGD(model.parameters(), lr=0.01, weight_decay=1e-4)
+# 或者使用 Adam
+# optimizer = optim.Adam(model.parameters(), lr=0.001, weight_decay=1e-4)
+```
+
+对特定参数使用权重衰减
+
+```py
+# 将模型参数分为需要衰减和不需要衰减的两组
+decay_params = []
+no_decay_params = []
+
+for name, param in model.named_parameters():
+    if 'weight' in name and 'norm' not in name:  # 通常是权重，且不是 BatchNorm 的权重
+        decay_params.append(param)
+    else:
+        no_decay_params.append(param)
+
+# 构建参数组
+param_groups = [
+    {'params': decay_params, 'weight_decay': 1e-4},
+    {'params': no_decay_params, 'weight_decay': 0.0}
+]
+
+# 使用优化器
+optimizer = optim.Adam(param_groups, lr=0.001)
+```
+
+经典泛化理论认为好的模型是简单的模型，简单性表现为：
+
+- 参数维度低，参数的范数低
+- 平滑性，即函数对输入的微小变化不敏感，随机噪声对最终结果是无影响的
+
+暂退法（dropout）：
+
+在前向传播过程中，计算每一内部层的同时注入噪声，例如在丢弃一些神经元，在计算下一层之前将当前层的一些节点置零
+
+暂退法应用：
+
+- 可以将 dropout 应用于每个隐藏层的输出，并为每一层分别设置概率
+- 一般越靠近输入层，dropout 概率越低
+
+```py
+net = nn.Sequential(nn.Flatten(),
+        nn.Linear(784, 256),
+        nn.ReLU(),
+        # 在第一个全连接层之后添加一个dropout层
+        nn.Dropout(dropout1),
+        nn.Linear(256, 256),
+        nn.ReLU(),
+        # 在第二个全连接层之后添加一个dropout层
+        nn.Dropout(dropout2),
+        nn.Linear(256, 10))
+
+def init_weights(m):
+    if type(m) == nn.Linear:
+        nn.init.normal_(m.weight, std=0.01)
+
+net.apply(init_weights);
+```
+
+训练时dropout才有作用；测试时，dropout层仅传递数据
