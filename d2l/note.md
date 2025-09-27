@@ -468,6 +468,8 @@ net.apply(init_weights);
 
 ## 深度学习计算
 
+### 层与块
+
 在研究和设计神经网络时，讨论 “比单个层大” 但 “比整个模型小” 的组件更有价值，多个层的组合称为” 块 “，” 块 “可以描述单个层、多个层、整个模型本身。
 
 每个块需要提供的功能：
@@ -477,7 +479,7 @@ net.apply(init_weights);
 - 存储、访问参数
 - 根据需要初始化模型参数
 
-这里自定义的 `MLP` 类继承了表示块的类 `nn.module`，
+下面定义了 `MLP` 类，继承了表示块的类 `nn.module`。`MLP` 包含一个隐藏层和一个输出层
 
 ```py
 class MLP(nn.Module):
@@ -493,4 +495,51 @@ class MLP(nn.Module):
     def forward(self, X):
         # 注意，这里我们使用 ReLU 的函数版本，其在 nn.functional 模块中定义。
         return self.out(F.relu(self.hidden(X)))
+```
+
+顺序块
+
+`nn.Sequential` 可以按顺序将多个层连起来。如果希望更灵活的功能，例如在前向传播过程中执行其他代码，这时可以自定义类
+
+```py
+class FixedHiddenMLP(nn.Module):
+    def __init__(self):
+        super().__init__()
+        # 不计算梯度的随机权重参数。因此其在训练期间保持不变
+        self.rand_weight = torch.rand((20, 20), requires_grad=False)
+        self.linear = nn.Linear(20, 20)
+
+    def forward(self, X):
+        X = self.linear(X)
+        # 使用创建的常量参数以及 relu 和 mm 函数
+        X = F.relu(torch.mm(X, self.rand_weight) + 1)
+        # 复用全连接层。这相当于两个全连接层共享参数
+        X = self.linear(X)
+        # 控制流
+        while X.abs().sum() > 1:
+            X /= 2
+        return X.sum()
+```
+
+自定义块之后，可以再用 `nn.Sequential` 将层、块组合起来
+
+```py
+chimera = nn.Sequential(NestMLP(), nn.Linear(16, 20), FixedHiddenMLP())
+```
+
+层与层可以共享参数
+
+```py
+# 我们需要给共享层一个名称，以便可以引用它的参数
+shared = nn.Linear(8, 8)
+net = nn.Sequential(nn.Linear(4, 8), nn.ReLU(),
+                    shared, nn.ReLU(),
+                    shared, nn.ReLU(),
+                    nn.Linear(8, 1))
+net(X)
+# 检查参数是否相同
+print(net[2].weight.data[0] == net[4].weight.data[0])
+net[2].weight.data[0, 0] = 100
+# 确保它们实际上是同一个对象，而不只是有相同的值
+print(net[2].weight.data[0] == net[4].weight.data[0])
 ```
