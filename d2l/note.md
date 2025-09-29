@@ -543,3 +543,38 @@ net[2].weight.data[0, 0] = 100
 # 确保它们实际上是同一个对象，而不只是有相同的值
 print(net[2].weight.data[0] == net[4].weight.data[0])
 ```
+
+延后初始化
+
+在实际场景中，有时不能提前确定每层的输入维度。可以使用框架的延后初始化功能，在第一次前向传播时动态推断每个层的大小。pytorch 中的 `nn.LazyLinear` 提供了该功能
+
+构建自定义层
+
+和前面的自定义块类似，需要集成基础层类，并实现前向传播功能。例如不带参数的层，实现 “对输入减去均值” 功能：
+
+```py
+import torch
+import torch.nn.functional as F
+from torch import nn
+
+
+class CenteredLayer(nn.Module):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, X):
+        return X - X.mean()
+```
+
+自定义带参数的层，和自定义块类似
+
+```py
+class MyLinear(nn.Module):
+    def __init__(self, in_units, units):
+        super().__init__()
+        self.weight = nn.Parameter(torch.randn(in_units, units))
+        self.bias = nn.Parameter(torch.randn(units,))
+    def forward(self, X):
+        linear = torch.matmul(X, self.weight.data) + self.bias.data
+        return F.relu(linear)
+```
