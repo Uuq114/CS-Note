@@ -578,3 +578,65 @@ class MyLinear(nn.Module):
         linear = torch.matmul(X, self.weight.data) + self.bias.data
         return F.relu(linear)
 ```
+
+读写文件
+
+加载和保存张量，使用 pytorch 的 `save`、`load` 函数
+
+```py
+import torch
+
+x = torch.arange(4)
+torch.save(x, 'x-file')
+y = torch.zero(4)
+torch.save([x, y], 'xy-files')  # 存储张量列表
+
+x2 = torch.load('x-file')
+x2, y2 = torch.load('xy-file')
+```
+
+加载和保存模型参数
+
+注意，模型由架构和参数组成，这里只涉及保存参数。在恢复模型时，需要用代码先生成架构，再从磁盘加载参数
+
+```py
+class MLP(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.hidden = nn.Linear(20, 256)
+        self.output = nn.Linear(256, 10)
+
+    def forward(self, x):
+        return self.output(F.relu(self.hidden(x)))
+
+net = MLP()
+
+# 保存参数
+torch.save(net.state_dict(), 'mlp.params')
+
+# 读取参数
+clone = MLP()
+clone.load_state_dict(torch.load('mlp.params'))
+```
+
+如果要操作多个张量，需要确保它们位于同一设备。默认情况下，张量是在 CPU 上创建的
+
+```py
+x = torch.tensor([1, 2, 3])
+x.device # device(type='cpu')
+```
+
+如果要在 GPU 上创建张量，需要指定 device
+```py
+x = torch.ones(2, 3, device=torch.device('cuda:0'))
+```
+
+复制到其他 GPU
+```py
+z = x.cuda(1)
+```
+
+## 卷积神经网络
+
+CNN 是为处理图像数据涉及的神经网络。CNN 的参数少于全连接架构的网络，也容易用 GPU 并行计算。除了图像处理，CNN在一维序列结构任务（例如音频、文本和时间序列分析）、推荐系统中发挥作用
+
