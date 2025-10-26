@@ -25,3 +25,11 @@ NCCL 设计目标：使用 NVLink/PCIe/IB 等技术，让 GPU-GPU 通信达到�
   - `ncclSend`、`ncclRecv`
 - 组调用
   - `ncclGroupStart`、`ncclGroupEnd`。中间包裹一系列 NCCL 调用。可以降低启动开销
+
+### 启动策略
+
+在多 GPU 上，NCCL 支持三种启动操作的执行模型
+
+- 单 CPU 进程 - 单 GPU：将每个 GPU 绑定到不同 CPU 进程上，对应的进程可以被调度到固定 NUMA 节点（CPU - 内存 - GPU），提高数据局部性、减少内存访问延迟
+- 单 CPU 线程 - 单 GPU：一个进程通过多个线程管理多个 GPU，所有线程可以访问共享内存（包括 GPU buffer 的 CPU 侧地址），减少数据拷贝
+- 单 CPU 线程 - 多 GPU：一个线程管理多个 GPU，架构简单、CPU 开销小、执行确定性，可用于小型部署
