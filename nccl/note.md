@@ -66,3 +66,15 @@ NCCL 的内部调优模型会基于当前策略、message size、可用带宽、
 >
 
 对于 `ncclGroupStart` 和 `ncclGroupEnd` 之间的点对点操作，NCCL 会尽可能让这些操作分散到多个 channel，让不依赖的 send/recv 并行。（task-level parallelism）
+
+## Communication Protocols
+
+三种通信协议 Simple、LL（Low Latency）、LL128，在带宽 / 延迟的 trade-off 不同：
+
+![alt text](img/image-1.png)
+
+### Simple Protocol
+
+- 设计目标：充分利用带宽，用来传 large message
+- 原理：chunking。将数据分成较大的 chunk 通过多个 channel 发送。
+
