@@ -77,4 +77,31 @@ NCCL 的内部调优模型会基于当前策略、message size、可用带宽、
 
 - 设计目标：充分利用带宽，用来传 large message
 - 原理：chunking。将数据分成较大的 chunk 通过多个 channel 发送。
+- 保证内存一致性：使用 memory fence 来保证 data correct ordering and visibility
 
+> 内存一致性：多个处理器（或 GPU）对共享内存的访问顺序和可见性规则
+>
+> 场景：NCCL 集体通信（AllReduce、Broadcast）中，GPU 可以通过 RDMA 直接读写远端 GPU 内存，接收方需要知道何时能使用接收的数据
+> 为了确保从内存读取的是最新数据，需要使用 memory fence 来保证内存一致性
+
+因为 memory fence 的开销巨大，latency 较高，对 small message 的影响大。但是对 large message，带宽基本能跑满
+
+### Low Latency (LL) Protocol
+
+- 设计目标：解决 Simple 协议的延迟问题。
+- 原理：
+    - 优化 small message 场景（带宽未充分利用），采用基于标志位的轻量级同步方法。每次 8 字节的原子操作传输 4 字节数据 + 4 字节 flag
+    - 缓冲区在 host memory 上而非 GPU memory 上。因为如果缓冲区在 GPU memory 上：① DRAM 操作比通过 PCIe 轮询 GPU 内存速度快。②需要显式同步保证 CPU 能看到 GPU 写入的数据。
+- 结果：LL 协议延迟低，但是带宽受限（只有峰值带宽的 25%-50%）。因此只适用于延迟更重要的场景
+
+### LL128 Protocol
+
+- 设计目标：优化 LL 协议，保持低延迟特性的同时提高带宽利用率
+- 原理：
+    - 使用基于标志位的同步机制。但是数据传输单元为 128 字节，120 字节的负载 + 8 字节 flag。
+    - 发送端 GPU 会聚合较大的数据块（128 字节）之后再通知 CPU 准备发送。这有两个影响：
+        - 跨节点流水线受限：和 Simple 协议相比，频繁小包传输的网络利用率较低
+        - 节点内流水线受益：128 字节的小单元允许计算、通信更好地重叠
+- 结果：
+    -
+    - 依赖硬件的 128 字节原子写操作。因此，协议受消息尺寸、系统支持能力的影响
