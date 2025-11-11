@@ -122,3 +122,38 @@ NCCL 根据用户设置 `NCCL_PROTO` 、集合通信算法、内部启发式策�
 
 ![alt text](img/image-2.png)
 
+- P2P 基础上，使用 `P2P_DIRECT` 进一步提升性能：
+  - 当通信双方的 rank 属于同一进程时，P2P 传输的 `P2P_DIRECT` 模式可以在内存寻址、数据传输路径提升效率
+    - 同一地址空间内直接使用 GPU 内存指针，避免 IPC（进程间通信）开销
+    - 通过 `directSend`、`directRecv` 等原语消除中间数据拷贝
+  - NCCL 通过共享结构（如 `ncclSendMem`、`ncclRecvMem`）的原子头尾计数器，保证正确的同步、操作顺序
+- GPU 直连 P2P 不可用或效率低时（如跨 socket、通过 PCIe 进行 P2P 通信），NCCL 使用共享内存（SHM）传输：GPU -> host memory -> GPU
+- 在多 socket 系统中，如果有支持 GPUDirect RDMA 的网卡，可以用 GPU -> NIC -> NIC -> GPU 传输路径，绕过 CPU 互联，更高效
+
+总结，节点内共有四种数据传输方法：
+
+- P2P Direct。最快的，直接读写 remote GPU mem。可使用 NVLink/PCIe，需要通信 rank 在一个进程
+- P2P IPC。中等，通过 NVLink，经过 buffer 中转，远程读写 GPU mem
+- P2P SHM。最慢，经过 host memory 中转，适用于跨 socket 场景
+- GPU 与 NIC 同 NUMA socket 时启用，可以绕过 CPU 互联，通过 GPU->NIC->NIC->GPU 快速传输
+
+### 节点间数据传输
+
+节点间数据传输涉及：执行 NCCL kernel 的 GPU、执行 proxy thread 的 CPU、底层网络。NCCL 根据底层硬件选择 TCP socket 传输或 IB 传输
+
+![alt text](img/image-3.png)
+
+TCP socket 传输：
+
+buffer 是 host mem 中的 CUDA pinned memory。引入额外的 PCIe 总线内存复制开销。发送方、接收方需要协调确认 buffer 就绪，再开始传输数据
+
+IB 传输：
+
+IB 传输利用 RDMA 能力，CPU 干预很少。buffer 位置取决于硬件配置。CPU proxy thread 负责管理 DMA、RDMA 操作。IB传输也需要发送方、接收方协调
+
+- （默认）如果 NIC 无法直接访问 GPU mem，buffer 就在 host mem。
+  - 发送方：GPU kernel 将数据拷贝到 host mem，proxy thread 执行 RDMA write
+  - 接收方：NIC 将数据写到 host mem，proxy thread 将数据拷贝到 device mem
+
+IB传输中的优化：
+
