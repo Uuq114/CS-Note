@@ -54,4 +54,11 @@ tokenization 将 text 变成 token sequence。vocabulary 是所有 token 的 lis
 
 第三部分，NN。
 
-NN input：input seq 的每个 token 的 vector
+NN 的输入：input seq 每个 token 的 vector
+
+![alt text](img/image-8.png)
+
+NN 的中间：每一层产生并向前传递 hidden state vector
+
+![alt text](img/image-9.png)
+

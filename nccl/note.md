@@ -149,11 +149,15 @@ buffer 是 host mem 中的 CUDA pinned memory。引入额外的 PCIe 总线内�
 
 IB 传输：
 
-IB 传输利用 RDMA 能力，CPU 干预很少。buffer 位置取决于硬件配置。CPU proxy thread 负责管理 DMA、RDMA 操作。IB传输也需要发送方、接收方协调
+IB 传输利用 RDMA 能力，CPU 干预很少。buffer 位置取决于硬件配置。CPU proxy thread 负责管理 DMA、RDMA 操作。IB 传输也需要发送方、接收方协调
 
 - （默认）如果 NIC 无法直接访问 GPU mem，buffer 就在 host mem。
   - 发送方：GPU kernel 将数据拷贝到 host mem，proxy thread 执行 RDMA write
   - 接收方：NIC 将数据写到 host mem，proxy thread 将数据拷贝到 device mem
 
-IB传输中的优化：
+IB 传输中的优化：
 
+- GPUDirect RDMA (GDRDMA)。让 NIC 可以直接访问 GPU mem，避免经过 host mem 的开销。NIC 需要和 GPU 连接到同一个 PCIe switch，才能用 GDRDMA
+- per-peer multi-channel connection。IB 传输层默认为每个 NIC-remote GPU 创建两个 logical channel。每个 channel 维护独立的内部结构、IB QP 对，proxy thread 在发送时会轮询两个队列的多组 QP。这样的多 channel + 轮询设计可以：
+  - 增大每个 QP 的有效 chunk size。（增大 QP 发送间隔后，可以安全增加 chunk size 而不担心流水线停顿，从而降低控制开销）
+  - 为支持 ECMP 的网络提供路径多样性（ECMP 是 equal-cost multi-path。数据中心常部署 ECMP，让同一 TCP/UDP/RoCE 流固定映射到同一路径避免乱序，使单 QP 流被映射到单路径，无法利用多条物理链路。路径多样性是通过多 QP 主动分裂大流，提升聚合带宽）
