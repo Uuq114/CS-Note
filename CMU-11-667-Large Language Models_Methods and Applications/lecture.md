@@ -62,3 +62,27 @@ NN 的中间：每一层产生并向前传递 hidden state vector
 
 ![alt text](img/image-9.png)
 
+NN 的输出：表示生成 token 的 embedding
+
+![alt text](img/image-10.png)
+
+第四部分，Logits。
+
+predicted embedding => logits（未归一化得分）===softmax===> probability
+
+NN 预测的 enmedding 乘以 vocabulary embedding matrix，可以为 vocabulary 的每个 word 计算一个分数，这个分数称为 logits
+
+第五部分，使用 softmax，将 logits 变成概率
+
+以序列生成任务为例，使用 softmax 可以让我们知道下一个词的概率分布
+
+![alt text](img/image-11.png)
+
+损失函数衡量该分布和真实的匹配程度。以负对数似然的损失函数为例，我们需要最大化真实序列的对数似然，因此需要最小化负对数似然。让模型学会什么是合理的语言
+
+第六部分，Decoding。
+
+我们需要根据下一个词的概率分布、取样算法，决定生成的下一个词。
+
+- 选择概率最大的词。
+- 根据概率随机抽样。
