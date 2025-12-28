@@ -4,6 +4,7 @@
 
 - [CMU 11-617: Large Language Models: Methods and Applications](#cmu-11-617-large-language-models-methods-and-applications)
   - [Language Models Basics](#language-models-basics)
+  - [Neural Language Model Architectures](#neural-language-model-architectures)
 
 <!-- /TOC -->
 
@@ -85,4 +86,34 @@ NN 预测的 enmedding 乘以 vocabulary embedding matrix，可以为 vocabulary
 我们需要根据下一个词的概率分布、取样算法，决定生成的下一个词。
 
 - 选择概率最大的词。
-- 根据概率随机抽样。
+- 根据 model 返回的概率分布，直接随机抽样。直接采样的后果是可能选到 softmax 的长尾噪声，这些词是低质量的。由于语言模型的 softmax 分布通常更平坦，因此尾部词的总概率不低，如 10~30%
+- 根据温度随机采样。温度为 0 时接近 argmax 采样，温度越高时尾部的采样概率越高
+- top-k 采样。只从 k 个高概率词采样，排除低质量 / 离群词，引入稀疏性。k 一般取值 10~50
+- nucleus sampling，核采样，也称 top-p 采样。和 top k 采样类似，都是从高概率词取样。区别在于，top p 的 k 是不确定的，取决于概率和大于（例如）0.9 的 token 个数
+- beam search，束搜索。一种在序列生成中平衡搜索质量和计算开销的搜索算法，假设质量最高的序列是概率最大的序列，并搜索这个序列。
+
+例如，beam size=2 时，每次会搜索概率最大的两个分支
+
+![alt text](img/image-12.png)
+
+beam search 的问题：
+对于开放问题（对话、故事生成），概率最高的生成序列不一定是最好的序列。即 beam search 生成的是更像人类写的文本，但是不够 surprising
+
+decoding 策略的 trade-off：
+质量、多样性、效率。
+
+质量依赖高概率路径 → 需抑制尾部噪声 → 牺牲多样性；
+多样性依赖探索低概率但合理路径 → 需保留尾部 → 风险引入错误。
+
+![alt text](img/image-14.png)
+
+![alt text](img/image-13.png)
+
+其他的 generation parameter：
+
+- frequency penalty。一个 token 已经出现的次数越多，减少后续输出的概率越小
+- presense penalty。减少一个 token 出现的概率。
+- stopping criteria。在输出 k 个 token / 特定 token 后，结束输出
+
+## Neural Language Model Architectures
+
