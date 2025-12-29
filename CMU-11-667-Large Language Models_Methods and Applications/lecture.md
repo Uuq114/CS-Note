@@ -41,7 +41,8 @@
 
 **language models terms**
 
-以一个序列生成为例，给了三个词 I、eat、the。第一个部分是 tokenization
+以一个序列生成为例，给了三个词 I、eat、the。
+第一个部分是 tokenization
 
 ![alt text](img/image-5.png)
 
@@ -116,4 +117,34 @@ decoding 策略的 trade-off：
 - stopping criteria。在输出 k 个 token / 特定 token 后，结束输出
 
 ## Neural Language Model Architectures
+
+给定一个前缀的 token 序列，如何计算下一个 token 的条件概率？
+
+neural language model 的方法：整个序列的联合概率等于每个 token 的条件概率乘积。使用 NN 可以让每个条件概率项可计算、可泛化、非零，从而让概率的积变成真实联合概率的有效近似。
+
+![alt text](img/image-15.png)
+
+Encoder-Decoder 架构
+
+将输入序列压缩成一个或一组 context vector，再由 decoder 基于该表示逐步生成输出序列
+
+![alt text](img/image-16.png)
+
+Encoder: input seq -> hidden states
+
+- 输入序列是变长的
+- 输出 vector summary
+
+Decoder: hidden states + target seq -> next token prediction
+
+- target seq 是变长的
+- decoder 逐个处理 target seq 的 token 并预测下一个 token。（为什么要重复生成 target seq 的 token？因为要让模型学会每一步的分布）
+
+Recurrent Neural Network (RNN)
+
+- 输入：embedding seq
+- recurrent unit（循环单元）接收前一个 hidden state 和需要处理的 token embedding
+- 输出：predicted embedding + updated hidden state
+
+![alt text](img/image-17.png)
 
