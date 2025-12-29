@@ -15,9 +15,9 @@ Course Schedule: https://cmu-llms.org/schedule/
 
 ## Lecture
 
-1. xx
-
 - Language Models Basics
 - Neural Language Models Architecture
 
 ## Lab
+
+- [ ] Pre-Trainging Data

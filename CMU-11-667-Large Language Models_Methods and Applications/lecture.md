@@ -1,8 +1,8 @@
-# CMU 11-617: Large Language Models: Methods and Applications
+# CMU 11-667: Large Language Models: Methods and Applications
 
 <!-- TOC -->
 
-- [CMU 11-617: Large Language Models: Methods and Applications](#cmu-11-617-large-language-models-methods-and-applications)
+- [CMU 11-667: Large Language Models: Methods and Applications](#cmu-11-667-large-language-models-methods-and-applications)
   - [Language Models Basics](#language-models-basics)
   - [Neural Language Model Architectures](#neural-language-model-architectures)
 
@@ -124,9 +124,10 @@ neural language model 的方法：整个序列的联合概率等于每个 token 
 
 ![alt text](img/image-15.png)
 
-Encoder-Decoder 架构
+**Encoder-Decoder 架构 **
 
-将输入序列压缩成一个或一组 context vector，再由 decoder 基于该表示逐步生成输出序列
+通常用来处理文本翻译等 seq2seq 任务。encoder 生成输入序列的向量表示，decoder 生成序列输出。
+Encoder/Decoder 可以使用不同的内部实现。例如 RNN 或者 transformer block
 
 ![alt text](img/image-16.png)
 
@@ -140,7 +141,9 @@ Decoder: hidden states + target seq -> next token prediction
 - target seq 是变长的
 - decoder 逐个处理 target seq 的 token 并预测下一个 token。（为什么要重复生成 target seq 的 token？因为要让模型学会每一步的分布）
 
-Recurrent Neural Network (RNN)
+Recurrent Neural Network (RNN)，循环神经网络
+
+RNN 是专门处理序列数据（如时间序列、文本、语音）的神经网络，具有循环结构。在每个时间步共享参数，并将上一时刻的 hidden state 传递给当前时刻，从而具有记忆过去信息的能力。
 
 - 输入：embedding seq
 - recurrent unit（循环单元）接收前一个 hidden state 和需要处理的 token embedding
@@ -148,3 +151,64 @@ Recurrent Neural Network (RNN)
 
 ![alt text](img/image-17.png)
 
+encoder final state -> decoder init state
+
+![alt text](img/image-18.png)
+
+todo: 这块没太看懂，encoder/decoder/RNN 之间关系是怎样的
+
+**Attention Mechanism**
+
+动机：翻译下一个词的时候，对源序列中的不同词，应该分配不同的权重
+
+注意力机制：
+
+- 在 decoder 的第 t 步，都会计算一个上下文向量 context vector，该向量包含 encoder 中所有和 “当前位置 token 的预测” 相关的信息
+- context vector 是 encoder hidden state 的线性组合，即：$\bm{c}_t=\bf{H}^{enc}\bf{\alpha_t}$
+- decoder 对位置 t 的 token 预测，是 context vector 和 decoder 在 t 位置 hidden state 的函数
+
+> decoder 从 encoder 的所有 hidden state 中按需提取信息 \
+> $\alpha_{i,t}$ 是注意力权重，表示 encoder 中第 i 个 hidden state 的重要性 \
+> 最终预测由 decoder 当前 hidden state $\bf{h}_t^{dec}$ 和上下文向量 $\bf{c}_t$ 共同决定
+
+![alt text](img/image-19.png)
+
+计算注意力权重
+
+$\alpha_{i,j}$ 是注意力权重，表示 encoder 中第 i 个 hidden state 对预测 j 位置 token 的重要性。一般会 softmax 归一化处理，让所有权重和为 1
+
+分子 $exp\ e_{i,j}$ 是原始分数，使用打分函数、encoder 第 i 时间步的 hidden state、decoder 第 j-1 步的 hidden state 计算
+
+最简单的打分函数是点积注意力，点积越大表示两个向量越相似即权重越大。这里把 $\bf{h}^{enc}_{i}$ 看成 key，把 $\bf{h}^{dec}_{j-1}$ 看成 query
+
+> Q: 计算注意力权重时，是否要限制 i、j 之间的大小关系？\
+> A: 在 encoder-decoder 注意力中不应该限制，而在 decoder 自注意力中应该限制。因为：①decoder 有时需要回看整个原句，尤其是后面的词，需要利用全局信息。②decoder 自注意力中，必须限制 $i \le j$。因为不能泄露未来信息，破坏自回归性质。可以通过加 mask 使 $i\gt j$ 时的注意力为 0 或负无穷（softmax 后为 0）
+
+![alt text](img/image-20.png)
+
+为什么需要注意力机制？同一个词在不同语境下含义不同，模型需要从上下文理解真正意思。传统 RNN/LSTM 会将所有上下文压缩成一个固定长度的向量，容易丢失细节
+
+**Transformers**
+
+为什么 Transformer 抛弃了 RNN，只用了注意力：
+
+- RNN 训练很慢。计算不能并行化，需按位置顺序计算 token
+- RNN 在长文本场景表现差。两个 token 距离越远，前面的 token 信息就越容易丢失（反之，注意力机制允许直接连接任意两个位置）
+
+Attention is All You Need
+
+Transformer 的 encoder、decoder 使用注意力机制实现
+
+![alt text](img/image-21.png)
+
+causal self attention（因果自注意力）
+
+保证模型在生成序列时的自回归原则，即预测当前词时只能依赖前面的词。
+
+![alt text](img/image-23.png)
+
+单向注意力机制：预测位置 i 只能用 $j\lt i$ 的权重
+
+![alt text](img/image-22.png)
+
+Transformer 是注意力实现的 encoder-decoder 架构模型，另外还有 encoder-only 架构，用于理解类任务；decoder-only 架构，用于生成类任务
