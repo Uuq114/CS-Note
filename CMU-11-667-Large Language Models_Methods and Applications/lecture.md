@@ -5,6 +5,7 @@
 - [CMU 11-667: Large Language Models: Methods and Applications](#cmu-11-667-large-language-models-methods-and-applications)
   - [Language Models Basics](#language-models-basics)
   - [Neural Language Model Architectures](#neural-language-model-architectures)
+  - [Pre-training data curation and tokenization](#pre-training-data-curation-and-tokenization)
 
 <!-- /TOC -->
 
@@ -212,3 +213,6 @@ causal self attention（因果自注意力）
 ![alt text](img/image-22.png)
 
 Transformer 是注意力实现的 encoder-decoder 架构模型，另外还有 encoder-only 架构，用于理解类任务；decoder-only 架构，用于生成类任务
+
+## Pre-training data curation and tokenization
+
