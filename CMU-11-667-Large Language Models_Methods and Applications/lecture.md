@@ -216,3 +216,52 @@ Transformer 是注意力实现的 encoder-decoder 架构模型，另外还有 en
 
 ## Pre-training data curation and tokenization
 
+本节课是模型的预训练中的数据处理过程，将 raw data 变成能被 NN 处理的格式
+
+**Obtaining Pre-training Data**
+
+预训练的目标：让模型学到自然语言的结构、学到训练集中的知识、可以模拟训练数据生成
+
+因此，理想的 pre-training 数据是：
+
+- 大
+- 高质量、干净、多样
+- 书籍，百科，新闻，文献等
+
+网络是常见的数据来源，从网络获取预训练数据的流程是：
+
+- 从网页爬取页面。从 seed url 出发，向外探索超链接即 target url，爬取 HTML 内容并转成文本
+- 筛选、清洗数据。清除噪声、spam、模板 / 碎片文字；挑选高质量文本；排除 toxic/biased 文本（ NSFW、strong bias ）
+
+清洗数据中的挑战
+
+![alt text](img/image-24.png)
+
+**Notable Datasets**
+
+![alt text](img/image-25.png)
+
+
+**Tokenization**
+
+raw clean text ====tokenization===> tokens ====batching====> tensor
+
+在 tokenization 中，有多种分词方式（character/subword/word），其中 word level 会碰到未登录词（OOV）问题，即训练集没有的单词、typo 会变成 `[UNK]`，无法分词。
+
+而 subword 分词则更灵活，一种常见算法是 Byte Pair Encoding (BPE) 算法。统计所有相邻字符串出现概率，合并最频繁的一对作为新单元，逐步构建常见的 subword token。
+最终高频词（the）被整个保留，低频词 / 未出现的词被拆分为已知子词（helloworld => hel|low|orld），极端情况退化到 character level tokenization
+
+BPE 优点是，vocabulary 大小可控；能处理拼写变体、复合词、罕见词；支持黏着语；token 长度适中，和 NN 兼容好
+
+**Batching**
+
+
+
+
+
+
+**Pre-treining Learning Objectives**
+
+
+
+
