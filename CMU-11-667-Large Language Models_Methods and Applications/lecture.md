@@ -6,6 +6,8 @@
   - [Language Models Basics](#language-models-basics)
   - [Neural Language Model Architectures](#neural-language-model-architectures)
   - [Pre-training data curation and tokenization](#pre-training-data-curation-and-tokenization)
+  - [Side Story: Transformer](#side-story-transformer)
+  - [Architecture Advancements on Transformers](#architecture-advancements-on-transformers)
 
 <!-- /TOC -->
 
@@ -290,3 +292,56 @@ Transformer 模型可以通过多种自监督方式预训练（自监督：不�
 - prefix language modeling。给开头，续写结尾
 - masked language modeling。完形填空
 
+## Side Story: Transformer
+
+doc link: https://jalammar.github.io/illustrated-transformer/
+
+Transformer 整体结构：
+Input => Encoder Stack => Encoder Output => Decoder Stack => Output
+
+- Encoder/Decoder Stack，N 个相同结构的 Encoder/Decoder 堆叠而成
+
+单个 encoder 结构，包含两个子层：
+
+- self-attention 层，让 encoder 在编码特定单词时能关注输入句子中的其他单词
+- feed forward network 层，前馈神经网络。
+
+单个 decoder 结构，包含三个子层，比 encoder 多一个注意力层：
+
+- self-attention
+- encoder-decoder attention，注意力层，让 decoder 关注输入句子中相关部分
+- feed forward
+
+tensor 流动过程：
+
+1. 每个输入单词经过 embedding，转换成向量，这里是 512 维向量
+2. 经过 encoder：每个 embedded 单词依次通过 encoder 的两个层。注意，每个词通过自己的路径流经 encoder。self-attention 层会用到位置关系，但是前馈层不需要，所以经过前馈层时多个路径可以并行执行。（feed forward 里面有多个 FNN，对应每个位置）
+
+![alt text](img/image-29.png)
+
+![alt text](img/image-30.png)
+
+自注意力：
+
+- 将当前单词和输入序列中的词关联，从而更好地 encode
+- 类似 RNN 中，将当前单词和之前的词通过 hidden state 关联起来。自注意力是 Transformer 使用相关词 “理解” 当前处理的词的方法
+
+如何计算自注意力：
+
+
+
+## Architecture Advancements on Transformers
+
+本节介绍基于 Transformer 架构的一些改进工作
+
+**New Architectures**
+
+xx
+
+**Motivation and Benefits of Each Architecture Upgrades**
+
+xx
+
+**Choose Right Architecture**
+
+xx
