@@ -253,15 +253,40 @@ raw clean text ====tokenization===> tokens ====batching====> tensor
 
 BPE 优点是，vocabulary 大小可控；能处理拼写变体、复合词、罕见词；支持黏着语；token 长度适中，和 NN 兼容好
 
+![alt text](img/image-26.png)
+
+subword tokenization 优点：
+
+- vocabulary size 可控（vocabulary size 也是一个超参数）
+- learned vocabulary 有这些特点：高频词整个保存，低频词被拆分
+- 很适合 NN 建模：常见组合高频出现，容易被注意力机制捕获；罕见词拆成 unit，其表征通过 subword unit 组合平滑生成
+
+subword tokenization 存在问题：
+
+- 如果起始 basic unit 是字母（如 a-z），那么还是可能存在未知 token（如中文）
+  - 解法：byte-level BPE 使用 unicode byte 作为 basic character unit
+- BPE 初始化需要 word-level 分词，再用 character 分词。第一步的 word 分词具体实现是 tricky 的（中文、代码不能直接用空格分）。
+  - 解法：用更精确的 rule-based 做初始分词
+- 找频率最高的组合时间复杂度 O(n^2)
+  - 解法：算法优化
+
 **Batching**
 
+raw clean text 经过分词后变成很多 token，接下来需要 batching 变成 tensor
 
+- batch size。一次性送入模型的样本数量，训练的核心超参数。在 LLM 训练中，一般指 global batch size，即每次参数更新所用的总 token 数量（含 padding）
 
+例如，当前 batch 有 32 个样本，每个序列 pad 到 2048，那么总 token=32*2048=65536
 
-
+![alt text](img/image-27.png)
 
 **Pre-treining Learning Objectives**
 
+Transformer 模型可以通过多种自监督方式预训练（自监督：不需要人工打标签，从文本自身结构学习）
 
+![alt text](img/image-28.png)
 
+- full-language modeling。从左到右，逐词预测
+- prefix language modeling。给开头，续写结尾
+- masked language modeling。完形填空
 
