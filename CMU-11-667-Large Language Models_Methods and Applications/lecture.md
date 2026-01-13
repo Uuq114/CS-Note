@@ -297,6 +297,7 @@ Transformer 模型可以通过多种自监督方式预训练（自监督：不�
 doc link: https://jalammar.github.io/illustrated-transformer/
 
 **Transformer 整体结构 **
+
 Input => Encoder Stack => Encoder Output => Decoder Stack => Output
 
 - Encoder/Decoder Stack，N 个相同结构的 Encoder/Decoder 堆叠而成
@@ -385,8 +386,57 @@ Input => Encoder Stack => Encoder Output => Decoder Stack => Output
 
 **postitional encoding 表示序列顺序 **
 
-为了描述输入序列中的词语顺序，Transformer 在每个输入的 embedding 上加了一个向量。这些向量遵循特定模式，
+上面的模型结构没有包含输入序列中单词的顺序。为了描述单词顺序，Transformer 在每个输入的 embedding 上加了一个向量。
 
+![alt text](img/image-40.png)
+
+> Q: 为什么对位置单独编码？输入序列在进入 encoder stack 的时候，它们之间的位置关系不是隐含在矩阵的列之间了吗？
+>
+> A: 在计算中，矩阵没有保留利用位置索引的机制。位置编码为每个位置（如第 1 位、第 2 位、第 3 位）添加了唯一的向量，这样同一个单词如果出现在不同位置，表示含义也不同，例如：位置 1 的 dog 通常是主语，位置 3 的 dog 通常是宾语
+>
+> 和 RNN/CNN 对比：RNN 中的 hidden state 携带历史，时间步为隐式编码；CNN 中卷积核的滑动窗口依赖于固定的局部顺序。但 Transformer 是全连接的，self-attention 连接所有 token 对，没有递归或卷积结构，因此需要显式注入位置信息
+
+一种位置编码方式是 sin/cos 编码：位置编码向量和输入 embedding 维度相同，每个位置、维度的值由函数决定。
+
+sin/cos 编码优势是能捕捉向量间的相对距离信息（而非绝对位置），从而得到两个向量的关系，因此模型能泛化到比训练序列更长的序列
+
+![alt text](img/image-41.png)
+
+**Residuals 残差 **
+
+残差。也称 skip connections，将某一层的输入直接加到输出上。是为了解决多层网络训练准确率下降而提出的
+
+Transformer 每个 encoder 的 self-attention 子层都有残差：output = LayerNorm(x + SubLayer(x))。
+
+sublayer 可以是 self-attention 也可以是 FFN
+
+![alt text](img/image-42.png)
+
+更详细的展示。LayerNorm 作用于残差后的结果，对单个样本的所有特征维度归一化，避免深层网络方差爆炸。（加上残差后，N 层输出方差是 $1+\sigma^2$）
+
+![alt text](img/image-43.png)
+
+类似地，decoder 中也有 residual-layernorm 结构：
+
+![alt text](img/image-44.png)
+
+**decoder side**
+
+最后一个 encoder 的输出被转换成一组注意力向量 K、V。这里的 KV 被每个 decoder 的 encoder-decoder attention 层中使用，帮助 decoder 聚焦输入系列的适当位置
+
+![alt text](img/image-45.png)
+
+重复这个过程，直到 decoder 输出表示结束的特殊符号 \<EOS>。每一步生成一个词，并将该词作为下一步的输入
+
+![alt text](img/image-46.png)
+
+在 decoder 中，self-attention 层只能关注输出序列中更早的位置，通过在 softmax 前对 future position 设置 mask 实现
+
+encoder-decoder 层的工作原理类似于多头自注意力层，但是 Q 矩阵来源于前序 decoder 的输出，K、V 矩阵来源于 encoder stack 的输出
+
+** 最后的 Linear 层和 Softmax 层 **
+
+xxx
 
 ## Architecture Advancements on Transformers
 
