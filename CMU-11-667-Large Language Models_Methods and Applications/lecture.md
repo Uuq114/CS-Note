@@ -434,9 +434,22 @@ sublayer 可以是 self-attention 也可以是 FFN
 
 encoder-decoder 层的工作原理类似于多头自注意力层，但是 Q 矩阵来源于前序 decoder 的输出，K、V 矩阵来源于 encoder stack 的输出
 
-** 最后的 Linear 层和 Softmax 层 **
+** Linear 层和 Softmax 层 **
 
-xxx
+回忆整个 transformer 的架构：encoder stack -> decoder stack -> linear + softmax
+
+最后的 linear+softmax 层将 decoder stack 输出的 vector of floats 转换成单词：
+
+- linear层是一个全连接神经网络，将vector投影到一个更大的向量，称为logits向量。logits大小等于vocabulary大小，每个分量表示一个单词的得分
+- softmax将得分转换成概率，概率最高的单词被选中输出
+
+![alt text](img/image-47.png)
+
+**模型训练过程回顾**
+
+模型训练过程中，也有前述的前向传播过程，
+
+
 
 ## Architecture Advancements on Transformers
 
