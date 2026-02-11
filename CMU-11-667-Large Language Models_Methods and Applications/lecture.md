@@ -382,6 +382,8 @@ Input => Encoder Stack => Encoder Output => Decoder Stack => Output
 
 多头注意力机制总结图：
 
+> 注：每个头都接收完整输入，学习不同的语义子空间表示
+
 ![alt text](img/image-38.png)
 
 **postitional encoding 表示序列顺序 **
@@ -440,24 +442,74 @@ encoder-decoder 层的工作原理类似于多头自注意力层，但是 Q 矩�
 
 最后的 linear+softmax 层将 decoder stack 输出的 vector of floats 转换成单词：
 
-- linear层是一个全连接神经网络，将vector投影到一个更大的向量，称为logits向量。logits大小等于vocabulary大小，每个分量表示一个单词的得分
-- softmax将得分转换成概率，概率最高的单词被选中输出
+- linear 层是一个全连接神经网络，将 vector 投影到一个更大的向量，称为 logits 向量。logits 大小等于 vocabulary 大小，每个分量表示一个单词的得分
+- softmax 将得分转换成概率，概率最高的单词被选中输出
 
 ![alt text](img/image-47.png)
 
-**模型训练过程回顾**
+** 模型训练过程回顾 **
 
-模型训练过程中，也有前述的前向传播过程，
+模型训练过程中，也有前述的前向传播过程，如果是在 labeled 训练集上训练，可以将模型输出与实际输出相比较
 
+使用 one-hot 编码来表示 vocabulary 的每个词的概率分布，例如：
 
+![alt text](img/image-48.png)
+
+损失计算是 token-level 的，每个时间步比较 “模型预测的概率分布” 和 “该位置真实 token 概率分布” 的 one-hot 分布
+
+Transformer 在序列生成（如翻译）中使用 token-level 的交叉熵损失：
+
+- 模型在位置 t 输出一个词汇表大小的概率分布（如 30,000 维）
+- 与真实目标 token 的 one-hot 分布计算交叉熵
+- 对所有时间步的损失求平均或求和作为总损失
+
+使用 teacher forcing，不让模型自回归生成完整句子：
+
+- Decoder 的输入是目标句子右移一位（shifted right）的真实 token 序列
+- 在每个时间步 t，模型基于前 t-1 个真实 token 预测第 t 个 token
+- 即使模型在 t-1 步预测错误，下一步输入仍使用真实 token（而非模型自己的预测）
+
+使用 teacher forcing 的好处：
+
+- 训练效率高，teacher forcing 允许并行计算所有时间步的损失
+- 避免早期错误预测造成后续梯度消失 / 爆炸
+- 训练目标是最大化正确翻译的似然概率
 
 ## Architecture Advancements on Transformers
 
 本节介绍基于 Transformer 架构的一些改进工作
 
-**New Architectures**
+原版 Transformer 架构
 
-xx
+![alt text](img/image-50.png)
+
+**FFN 优化 **
+
+![alt text](img/image-49.png)
+
+原版 FFN 使用 linear+ReLU+linear 的结构。ReLU 的负数部分梯度是 0，训练不稳定
+
+优化的激活函数：
+
+GELU (Gaussian Error Linear Unit)，ReLU 的平滑版本，$GELU(x)=x \cdot \Phi(x)$，$\Phi(x)$ 是标准正态分布的累积分布函数
+
+![alt text](img/image-51.png)
+
+Swish 函数，曲线平滑并且在所有点可微，$Swish(x)=x\cdot Sigmoid(\beta x)$。
+$\beta$ 可以控制函数形状，通常是常数或者让模型学习得到。beta=0 时 Swish 退化成线性函数，beta=∞时 Swish 变成 ReLU.
+一般设置 beta=1，此时称为 SiLU，Sigmoid Gated Linear Unit
+
+![alt text](img/image-52.png)
+
+Bilinear FFN，非标准 FFN 的线性结构。两个 FFN 路径，按元素乘积，再线性变换
+
+![alt text](img/image-53.png)
+
+**注意力优化**
+
+![alt text](img/image-54.png)
+
+原版使用多头注意力MHA，每个头有自己的QKV矩阵，最后需要将所有头输出的qkv向量拼起来。因为每个QKV矩阵
 
 **Motivation and Benefits of Each Architecture Upgrades**
 
