@@ -590,4 +590,14 @@ RoPE 将相对位置转化成向量夹角，使用旋转角度表示位置差。
 
 ## Automatic Evaluation of LLMs
 
-xx
+评估模型的标准：
+
+- 抽象属性：质量、信息量、毒性、客户满意度
+- 可量化指标：perplexity（困惑度 / 文本流畅度）、任务准确率、点击率
+
+几种评估序列生成的方法：
+
+- word error rate：从生成序列到期望序列的编辑距离。缺点是，不好处理同义词
+- perplexity：交叉熵损失的 e 指数。值越小表示模型越 “确信” 正确答案。和测试集、分词器有关系。衡量的是模型对 “已知分布” 的拟合程度，不是人类感知的 “质量”
+- BLEU：比较生成序列和期望序列的 n-gram 重合度，分数越高表示越接近期望序列。在机器翻译任务上，BLEU 和人工打分中度相关
+- ROUGE k：和 BLEU 比较 precision 不同（有多少 generation 的词出现在 reference），ROUGE 比较 recall（有多少 reference 的词出现在 generation）
