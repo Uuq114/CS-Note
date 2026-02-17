@@ -9,6 +9,7 @@
   - [Side Story: Transformer](#side-story-transformer)
   - [Architecture Advancements on Transformers](#architecture-advancements-on-transformers)
   - [Automatic Evaluation of LLMs](#automatic-evaluation-of-llms)
+  - [Customizing LLMs via full model finetuning](#customizing-llms-via-full-model-finetuning)
 
 <!-- /TOC -->
 
@@ -601,3 +602,16 @@ RoPE 将相对位置转化成向量夹角，使用旋转角度表示位置差。
 - perplexity：交叉熵损失的 e 指数。值越小表示模型越 “确信” 正确答案。和测试集、分词器有关系。衡量的是模型对 “已知分布” 的拟合程度，不是人类感知的 “质量”
 - BLEU：比较生成序列和期望序列的 n-gram 重合度，分数越高表示越接近期望序列。在机器翻译任务上，BLEU 和人工打分中度相关
 - ROUGE k：和 BLEU 比较 precision 不同（有多少 generation 的词出现在 reference），ROUGE 比较 recall（有多少 reference 的词出现在 generation）
+
+上面的 metric 都是基于序列相似性的，还有基于语义相似性的方法 BERTScore，可以更有效识别同义词场景。
+
+以及，直接学习人类打分的 regression/ranking model 的 COMET。regression 是模拟人类打出分数，ranking 是给两个 hypothesis，模型选出更好的那个。ranking 的可以适用以下场景：
+
+- 搜索
+- 问答
+- 自动补全，给出建议 list
+
+后面还有关于 ranking 的更多讨论，这里略
+
+## Customizing LLMs via full model finetuning
+
