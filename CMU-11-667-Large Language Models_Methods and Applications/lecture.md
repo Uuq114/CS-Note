@@ -615,3 +615,130 @@ RoPE 将相对位置转化成向量夹角，使用旋转角度表示位置差。
 
 ## Customizing LLMs via full model finetuning
 
+Transformer 之前，每个模型是根据特定任务数据来训练。
+2018 的 Transformer 之后，对大模型先进行 generic language understanding 的预训练，再针对每个 NLP 任务微调
+
+![alt text](img/image-65.png)
+
+full model-finetuning（全量模型微调）的缺点：
+
+- 训练全量模型时，显存需要存储梯度，因此显存占用远大于推理
+- 如果微调数据集较小，容易过拟合
+- 每微调一个任务都需要保存一份权重副本，存储成本高
+- 任务很多时，同时部署所有的模型成本很高
+
+提高效率的方法：
+
+- 避免微调全参数，in-context learning
+- parameter-efficient finetuning
+- 将 multi-task finetuning 变成 instruction finetuning
+
+**in-context learning**
+
+GPT-2 paper 提出了一个论点：
+language models are unsupervised multitask learners
+
+这句话体现了这么几点：
+
+- 简单的核心机制：Transformer 架构的自回归模型，本质任务就是预测下一个 token。为了预测下一个 token，模型需要理解语法、事实、逻辑甚至代码结构，这种简单机制是后续所有复杂能力的基础
+- 自监督（无监督）：传统机器学习中，大多数任务需要有人工标注数据的 “有监督学习”，而 LLM 可以在公开文本上训练，这使得模型的数据量可以无限扩展
+- 多任务：传统的 AI 是一个模型对应一个任务，但是现在的模型通过 prompt + 上下文学习完成多种任务。并且，这种能力是随着模型变大而 “涌现” 的
+
+GPT-3 paper 提出：
+language models are few-shot learners
+
+这句话体现：
+
+- 泛化能力质变：当模型大到一定程度，只要给几个例子，模型能快速适应新任务
+- 推理即训练：在推理时提供示例，可以利用上下文窗口进行轻量级 “训练”
+
+in-context learning：
+将完成任务需要的信息，作为 prompt 的一部分传给 LLM。few-shot learning 是给 instruction+example，zero-shot 是指给 instruction
+
+**parameter-efficient finetuning**
+
+PEFT 高效微调算法，微调少量参数。主要分三类：
+
+- addition：额外引入可训练参数，只训练这部分参数。如 prompt tuning、prefix tuning、adapters、compacters
+- specification：选择网络中的部分参数，tune 这些参数。如 layer freezing、BitFit、DiffPruning
+- reparameterization：重参数化，将权重的更新量分解成更小的、可训练的结构，如低秩矩阵。如 LoRA、QLoRA、$(IA)^3$
+
+**addtion**
+
+- prompt tuning
+  - 动机：使用大量的 task example 训练一个 NN，来生成好的 task prompt
+  - 方法：优化嵌入向量而非离散 token，将优化的向量加到 LLM 输入前面，引导模型
+- prefix tuning
+  - 动机：和 prompt tuning 类似，在模型输入序列前加上一串可训练的 prefix。但是 learned prefix 除了会追加到 input embedding，还会追加到 Transformer 的每一层 k/v
+- adapter
+  - adapter 是在预训练网络的层之间插入的小型可训练 module
+
+prefix/prompt tuning 优缺点：
+
+- 优点：learned embedding 一般比较小（几 MB）；推理时可以对任务切换特定 embedding
+- 缺点：比全参数微调收敛慢；best prefix length 不确定；learned embedding 可解释性差
+
+adapter 结构。在 Transformer 的每一层插入，下图以 FFN 之后插入 adapter 为例
+
+![alt text](img/image-66.png)
+
+adapter 优缺点：
+
+- 优点：比 prefix/prompt tuning 收敛更快；adapter 为模块化，可独立保存加载。在多任务中很有效，例如 AdapterFusion 可组合多个 adapter
+- 缺点：新增网络层导致推理变慢；让模型更大，adapter size 和 layer number 有关
+
+**specification**
+
+- layer freezing
+  - 动机：Transformer 浅层（靠近 embedding）主要是处理语言基础（局部特征、通用语言规则），深层是负责做决策（全局语义、逻辑、任务意图）。因此为了学习新任务，可以 freeze earlier layer，只微调 later layer
+- BitFit：bias-terms fine-tuning。冻结所有权重矩阵，只训练 bias
+- DiffPruning
+  - 动机：前面的方法都是手动划分 freeze/tune 的参数，DiffPruning 选择学习 “更新哪些参数”
+  - 方法：目标是找到 $\Delta W$ 使得 $W_{final}=W_{pretrained}+\Delta W$，并且 $\Delta W$ 是稀疏的。
+
+**reparameterization**
+
+什么是 intrinsic demension？
+
+如果一个大模型是将数据映射到高维空间进行处理，这里假定在处理一个细分的小任务时，是不需要那么复杂的大模型的，可能只需要在某个子空间范围内就可以解决，那么也就不需要对全量参数进行优化了，现实中我们难以精确找到某个问题所对应的子空间，但是我们可以定义当对某个子空间参数进行优化时，能够达到全量参数优化的性能的一定水平（如 90% 精度）时，那么这个子空间所对应的维度就可以称为对应当前待解决问题的 Intrinsic Dimension
+
+关于 intrinsic dimension 的几个结论：
+
+1. 预训练隐式地降低了 Intrinsic Dimension
+2. 大模型在经过一定次数训练后，倾向于有着更低的 Intrinsic Dimension
+3. 越简单的下游任务，有着越低的 Intrinsic Dimension
+4. 越低的 Intrinsic Dimension，有着越好的泛化性能
+
+reparameterization 动机：
+finetuning 的 intrinsic dimension 是 low，为了达到目标性能需要调整的最小参数量是不大的。因此，可以在训练时为了好优化，将参数拆开（原始权重 + 旁路小矩阵）
+
+- LoRA (Low Rank Adaption)
+  - 动机：模型权重是低秩的，权重的更新量也是低秩的，因此不需要完整的矩阵表示权重变化
+  - 方法：LoRA 向每一层增加可训练的秩分解矩阵，像 DiffPruning 一样学习 delta，但是 LoRA 将 delta 重参数化为更低维形式。实际应用中，LoRA 只适配注意力层，其他层不变
+- $(IA^3)$ (Infused Adapater by Inhibiting and Amplifying Inner Activations)
+  - 旨在改进 LoRA 的方法
+  - 目标：尽量减少新增 / 更新的参数量；仅用少量示例训练就能达到强准确性；允许 mixed-task batches
+  - 核心思想：使用低维学习向量来 rescale inner activation，这些向量被注入到注意力模块、前馈模块
+  - 和 LoRA 的区别：LoRA 在权重空间操作（加法），IA3 在激活空间操作（乘法 rescale）
+- QLoRA (Quantized LoRA) 比 LoRA 更高效
+
+** fine tuning 总结 **
+
+- 性能：full fine tuning > LoRA > adapter > prefix tuning > prompt tuning
+- memory usage：full fine tuning > adapter > LoRA > BitFit
+
+如何使用 PEFT？
+
+- 大模型厂商的 finetuning API
+- HuggingFace 的 PEFT lib
+
+** 实践 **
+
+- 如何更新参数：全量微调、PEFT
+- 用什么数据训练：multi-task（传统 NLP 任务）、instruction（指令 - 响应对）
+
+以翻译为例，prompt tuning 里面的 few-shot example 是让模型学会 “按 xx 格式翻译”，而 instruction 是让模型学会翻译能力。
+
+instruction tuning 训练数据例子：
+
+![alt text](img/image-67.png)
