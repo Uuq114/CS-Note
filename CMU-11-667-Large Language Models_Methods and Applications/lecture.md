@@ -10,6 +10,7 @@
   - [Architecture Advancements on Transformers](#architecture-advancements-on-transformers)
   - [Automatic Evaluation of LLMs](#automatic-evaluation-of-llms)
   - [Customizing LLMs via full model finetuning](#customizing-llms-via-full-model-finetuning)
+  - [Reasoning](#reasoning)
 
 <!-- /TOC -->
 
@@ -742,3 +743,11 @@ finetuning 的 intrinsic dimension 是 low，为了达到目标性能需要调�
 instruction tuning 训练数据例子：
 
 ![alt text](img/image-67.png)
+
+## Reasoning
+
+从机器翻译到 LLM 的相关工作，可以总结几点：
+
+- seq2seq 的抽象是很有效的（语音转文字、文本总结、图生文、基于图片和文本问答）
+- Transformer attention 可以有效识别 “模式”
+

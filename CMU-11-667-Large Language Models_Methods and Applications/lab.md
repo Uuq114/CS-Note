@@ -56,3 +56,39 @@ Q2.3
 Q2.4
 
 将数据集转成 huggingface 格式。
+
+## Assignment 2 - Transformer
+
+Q1.1
+
+A. 对于 “有空格”、“Unicode 特殊字符” 的字符串，tokenizer 可能无法保证 injective 和 invertible；
+对于 “没空格” 的字符串，可能无法保证 concatenation，例如 `helloworld` 会被拆成 `hello` 和 `##world`
+
+B. 能满足加法律的 tokenizer 只能是 character-level 的，但是实际应用中，subword-level 的 tokenizer 是效率最高的
+
+Q1.3
+
+A. 最长的 token 是 `<Reference>`，可能说明：
+
+- vocabulary size 较小。因为最长的 token 也不是很长，说明 BPE 合并次数有限，而 BPE 合并次数 = vocabulary size - 初始字符集合大小
+- 训练数据是学术 / 技术文档，主要英文
+
+B. BPE 分词可能泄露敏感信息：
+
+- 高频词可能暴露训练数据种类
+- merge rule 暴露文本结构
+
+Q1.4
+
+A.
+
+```
+document length in English 119
+document length in Thai 636
+```
+
+不同的分词器是基于特定语言的训练数据学到的，当文本语言和分词器“母语”不匹配时，压缩效率会下降
+
+B. low-resource语言的语料有限，分词效率低。会导致token数量膨胀、推理成本上升、语义理解难度增加
+
+Q2.1
