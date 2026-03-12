@@ -32,6 +32,8 @@ Helm 被称为 Kubernetes 的 “包管理器”（类似于 Linux 的 apt 或 y
 
 数据流：`values.yaml` 提供参数 → `_helpers.tpl` 生成统一命名 → `templates/*.yaml` 渲染出最终的 K8s 资源清单
 
+整个服务的流量是 `client -> ingress -> loadbalancer service -> (many) nodeport service -> pod`，为了让 lb svc 能起到负载均衡作用，将 nodeport 的 label 拆成了 `app` 和 `instance_id`，同种服务的 `app`label 是相同的，lb svc 引用这个 label
+
 ** 整理 chart 目录结构 **
 
 创建一个 chart 目录
