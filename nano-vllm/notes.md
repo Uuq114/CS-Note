@@ -68,28 +68,34 @@ def compute_logits(self, hidden_states: torch.Tensor) -> torch.Tensor
 
 **Qwen3DecoderLayer**
 
-单层 Transformer decoder
+单层 Transformer decoder 实现
 
-1. 层的顺序在 `forward` 函数里面通过代码执行顺序执行。input_layernorm → self_attn → post_attention_layernorm → mlp
-2. 多头展开 → 各自计算 → o_proj 融合 → 送给 FFN
-
-todo: 残差 ffn
+1. 搭建 transformer decoder 时，在 `__init__` 函数中定义各层模块， 在 `forward` 方法中显式指定调用顺序。
+2. 这里 decoder 的实现和原始 Transformer 不同，在 attn 前有 pre norm，这样训练更稳定，梯度通过残差直接回传，不会被 norm 层卡住，更容易收敛。
+input_layernorm → self_attn → post_attention_layernorm → mlp
 
 **Qwen3Attention**
 
-forward 流程：
+decoder layer 中的注意力层。包含三步：
 
-- hidden_states
-- qkv_proj (融合线性层，一次算出 Q/K/V)
-- split → q, k, v
-- view (reshape 成多头形状: [seq_len, num_heads, head_dim])
-- q_norm / k_norm (QK 归一化，仅在无 bias 时)
-- rotary_emb (RoPE 旋转位置编码，注入位置信息)
-- attn (注意力计算，含 KV Cache 管理)
-- o_proj (输出投影，映射回 hidden_size)
-output
+1. 计算 qkv 向量，以及 rope 位置编码。qkv_proj → split → reshape → QK Norm → RoPE
+2. 注意力计算。`attn(Q, K, V)`
+3. 多头输出结果投影，映射到 `[seq_len, hidden_size]`。多头展开 → 各自计算 → o_proj 融合 → 送给 FFN
 
-todo: attn
+`__init__` 函数：
+
+1. TP 分头计算。将 head 分到 `tp_size` 个 GPU 上计算，
+2. 核心组件，qkv 融合矩阵，o 投影矩阵，RoPE，attn 计算。这里采用 GQA 优化 KV Cache 占用
+3. 可选的 QK Norm。没有 `qkv_bias` 时，用 RMSNorm 来稳定 QK 的数值范围，可以防止注意力分数爆炸
+
+`forward` 函数：
+
+1. qkv 融合计算
+2. view reshape 成多头形状: `[seq_len, num_heads, head_dim]`
+3. 仅在无 `qkv_bias` 时，执行 qk norm
+4. 多头输出投影到 `hidden_size`
+
+**Qwen3MLP**
 
 ## Layers
 
