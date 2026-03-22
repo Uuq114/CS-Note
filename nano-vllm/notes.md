@@ -90,12 +90,40 @@ decoder layer 中的注意力层。包含三步：
 
 `forward` 函数：
 
-1. qkv 融合计算
-2. view reshape 成多头形状: `[seq_len, num_heads, head_dim]`
-3. 仅在无 `qkv_bias` 时，执行 qk norm
-4. 多头输出投影到 `hidden_size`
+1. qkv 融合计算。融合的 qkv 投影矩阵的形状 `qkv_proj` 是 `[hidden_size, (num_heads + 2 * num_kv_heads) * head_dim]`。embeddings 和融合的 qkv 投影矩阵相乘后，结果是 `[seq_len, (num_heads + 2 * num_kv_heads) * head_dim]`。
+2. split 上述结果，将 qkv 分开。在列上切分 `num_heads*head_dim | num_kv_heads*head_dim | num_kv_heads*head_dim`
+3. 将一个长向量拆成多个 head。以 q 为例，`[seq_len, num_heads * head_dim] -> [seq_len, num_heads, head_dim]`。`head_dim` 是每个 head 的独立工作维度
+4. 多头输出投影。单个 head 输出 `[seq_len, head_dim]`，head 数量是 `num_heads`（Q 的数量），因此最后多头输出 concat 后是 `[seq_len, head_dim * num_heads]`，`o_proj` 形状是 `[hidden_size, hidden_size]`，注意这里 `hidden_size=head_dim * num_heads`。GQA 中，kv 头数量只影响 kv 存储和计算过程，不影响输出的头数
 
 **Qwen3MLP**
+
+`Qwen3MLP` 是 Transformer 中的 FFN 模块，即 MLP 层
+
+1. 功能：对特征进行 “升维线性变换 -> 非线性激活 -> 降维线性变换” 的加工，增强模型表达能力。以 ReLU 激活为例，$FFN(X)=ReLU(XW_1)W_2$$
+2. 流程：
+   - 升维：输入 `hidden_state`，输出 `2 * intermediate_state`，分别用于 gate 和 up
+   - 激活：使用 SwiGLU
+   - 降维：降维，从 `intermediate_state` 到 `hidden_size`
+
+**总结**
+
+整个流程是：
+
+```text
+input_ids 
+   ↓
+Embedding (vocab_size → hidden_size)
+   ↓
+[ Pre-LN Residual Block ] × num_hidden_layers
+   ├── x = x + Attn( RMSNorm(x) )
+   ├── x = x + MLP( RMSNorm(x) )   # MLP: SwiGLU + 升维降维
+   ↓
+Final RMSNorm
+   ↓
+LM Head (hidden_size → vocab_size)  # compute_logits 调用
+   ↓
+logits → (optional) softmax → probabilities
+```
 
 ## Layers
 
