@@ -105,18 +105,18 @@ decoder layer 中的注意力层。包含三步：
    - 激活：使用 SwiGLU
    - 降维：降维，从 `intermediate_state` 到 `hidden_size`
 
-**总结**
+** 总结 **
 
 整个流程是：
 
 ```text
-input_ids 
+input_ids
    ↓
 Embedding (vocab_size → hidden_size)
    ↓
-[ Pre-LN Residual Block ] × num_hidden_layers
-   ├── x = x + Attn( RMSNorm(x) )
-   ├── x = x + MLP( RMSNorm(x) )   # MLP: SwiGLU + 升维降维
+[Pre-LN Residual Block] × num_hidden_layers
+   ├── x = x + Attn(RMSNorm(x) )
+   ├── x = x + MLP(RMSNorm(x) )   # MLP: SwiGLU + 升维降维
    ↓
 Final RMSNorm
    ↓
@@ -127,4 +127,60 @@ logits → (optional) softmax → probabilities
 
 ## Layers
 
-xx
+按照以下顺序介绍 `layers` 中的组件
+
+1. linear
+2. activation
+3. layernorm
+4. rotary embedding
+5. attention
+6. embedding/lm_head
+7. `qwen3.py` 总结
+
+todo: 更新 layer list
+
+每一层需要关注输入、输出的 shape、在 qwen3 的哪里被调用、有没有 TP 通信
+
+**attention**
+
+1. 定义 `Attention` 类：根据当前上下文（prefill/decode 阶段），选择注意力计算方式
+    - prefill 阶段：为 prompt 的所有 token 计算注意力，同时为整段 k/v 构建 cache
+    - decode 阶段：对新生成的 token 计算一次 q/k/v，然后使用 ` 新 token 的 q + 历史 kv cache` 计算 attn
+    - 具体计算注意力，是调 flashattn kernel
+    - 输出 shape 和 q 对齐，都是 `[N, num_q_heads, head_dim]`。N 代表这次参与计算的 token 总数，比如有多条序列 prefill，这里 N 就等于所有序列长度之和。因为 `k = k.view(-1, self.num_kv_heads, self.head_dim)` 已经压平了 batch/sequence 维度，所以使用 `cu_seq_lens_q`/`cu_seq_lens_k` 区分每条序列的起止
+2. 管理 kv cache：`store_kvcache` 函数将新的 `k_cache/v_cache` 写进全局 cache 的 slot
+
+整体流程
+
+```
+                当前层传入
+          q [N, num_heads, head_dim]
+          k [N, num_kv_heads, head_dim]
+          v [N, num_kv_heads, head_dim]
+                     |
+                     v
+         如果有 cache，就先写入 k/v cache
+                     |
+                     v
+          +-------------------------+
+          |   context.is_prefill ?  |
+          +-------------------------+
+              | yes             | no
+              v                 v
+   flash_attn_varlen_func   flash_attn_with_kvcache
+              |                 |
+              +---------> o <---+
+                         |
+                         v
+             [N, num_heads, head_dim]
+```
+
+todo: kv cache 管理，读取 / 写入怎么定位；
+
+**layernorm**
+
+xxx
+
+**rotary_embedding**
+
+xxx
