@@ -129,15 +129,13 @@ logits → (optional) softmax → probabilities
 
 按照以下顺序介绍 `layers` 中的组件
 
-1. linear
-2. activation
-3. layernorm
-4. rotary embedding
-5. attention
+1. attention
+2. layernorm
+3. rotary embedding
+4. linear
+5. activation
 6. embedding/lm_head
 7. `qwen3.py` 总结
-
-todo: 更新 layer list
 
 每一层需要关注输入、输出的 shape、在 qwen3 的哪里被调用、有没有 TP 通信
 
@@ -179,8 +177,134 @@ todo: kv cache 管理，读取 / 写入怎么定位；
 
 **layernorm**
 
-xxx
+RMSNorm 是一种高效的归一化方法，让神经网络某一层的输出数值稳定。和标准的 LayerNorm 区别是：
+
+1. LayerNorm 是减去均值，再除方差
+2. RMSNorm 去掉了 “减去均值” 操作，减少了计算复杂度。缺点是，省略均值计算可能丢失输入分布的信息，影响模型表达能力
+
+RMSNorm 计算公式是：
+
+$$
+RMS(x)=\sqrt{\frac{1}{d}\sum^d_{i=1}x^2_i+\epsilon} \\
+RMSNorm(x)=\frac{x}{RMS(x)}\gamma
+$$
+
+其中，$d$ 是 token 特征维度数，$\epsilon$ 是防止除以零的小常数，$\gamma$ 是可训练的缩放参数
+
+在 `qwen3` norm 用在了这些地方：
+
+1. attn 之前
+2. attn 之后，MLP 之前
+3. 最后一层 decoder 输出后，lm_head 之前（hidden_state 经过 lm_head 变成 logits）
+
+解析这里的 RMSNorm 实现：
+
+1. `__init__` 部分。定义两个参数，`epsilon` 和 `gamma`，小常数和缩放参数（长度是 `hidden_size`，学习每一维度应该方所多少）
+2. `rms_forward` 部分。对输入的最后一维（即 hidden 维度）计算 RMSNorm，不改变 shape，只调整数值
+3. `add_rms_forward` 部分。把残差和 RMSNorm 一起算了。输入是 `x,residual`，输出是 `RMSNorm(x+residual),x+residual`
+4. `forward` 部分。供上层调用的统一入口，如果有残差就调用 `add_rms_forward`，否则调用 `rms_forward`
+
+```py
+class RMSNorm(nn.Module):
+    def __init__(self, dim: int, eps: float = 1e-5):
+        super().__init__()
+        self.eps = eps
+        self.weight = nn.Parameter(torch.ones(dim))  # 可学习的缩放参数 γ
+
+    def _norm(self, x):
+        # 均方根归一化：沿最后一维计算
+        # torch.rsqrt 返回的是 x.pow(2).mean(-1, keepdim=True) + self.eps 的平方根的倒数
+        # 直接调用 rsqrt 比先 sqrt 再 1 / 更高效，尤其在 GPU 上
+        return x * torch.rsqrt(x.pow(2).mean(-1, keepdim=True) + self.eps)
+
+    def forward(self, x):
+        # print(self._norm(x.float()).shape)# # torch.Size([1, 2, 4])
+        return self.weight * self._norm(x.float()).type_as(x)
+```
+
+Q：为什么 RMSNorm 和 LayerNorm 都在 token 特征维度上操作，而非跨 batch？
+
+A：
+
+- BatchNorm 是处理图像数据常用的归一化方式，图像数据通常有强烈的空间相关性，即相邻的像素通常会有相似的值或模式。因此，图像的像素特征在一个 batch 中通常有相似的分布，BatchNorm 通过跨 batch 归一化，可以减轻空间相关性的影响，让训练时每一层的输入保持一定的分布，从而加速收敛
+
+- NLP 任务中，每个 token 的特征是通过 embedding-transformer 层独立计算的，不同 token 的语义不同，因此 token 的特征需要独立归一化处理
+
+- 如果归一化操作发生在 batch 维度上，会导致不考虑每个 token 的独立性。用于归一化的数据来自不同的 batch，包含不同的 token 内容和信息，如果跨 batch 进行标准化，会丢失 token 间的独立性，使得 token 之间存在耦合关系，比如一些 padding token 并没有实际意义，但是被加入了归一化计算，进而影响模型的学习效果。
 
 **rotary_embedding**
 
-xxx
+RoPE（Rotary Positional Embedding，旋转位置编码）
+
+- 为什么需要 RoPE：
+    - Transformer 的自注意力机制是置换不变的（不依赖输入顺序）。为了让模型感知序列中 token 的前后关系，需要显式注入位置信息
+    - 绝对位置编码（如 Transformer 原论文的 sin/cos 编码、可学习的绝对位置编码）缺点是，不直接表达相对位置，外推性差
+    - 相对位置编码，在计算注意力时引入位置差 `i-j` 的 bias。缺点是，需要修改注意力公式，计算比较复杂，且不容易和线性注意力等变体结合
+    - RoPE 是相对位置编码的一种新实现
+- RoPE 的核心思想：在二维平面旋转向量
+    - 位置 m 的 $q_m$ 和位置 n 的 $k_n$，希望点积只依赖相对位置 `m-n`
+    - 旋转后的点积，等于 “原始向量经过相对旋转后” 的点积
+
+![alt text](img/image.png)
+
+具体到 nano vllm 中 RoPE 的实现：
+
+1. 核心的数学实现部分。
+
+```py
+def apply_rotary_emb(
+    x: torch.Tensor,
+    cos: torch.Tensor,
+    sin: torch.Tensor,
+) -> torch.Tensor:
+    # 1. 将特征维度切成两半 (x1, x2)，
+    # RoPE 是成对处理维度的
+    x1, x2 = torch.chunk(x.float(), 2, dim=-1) # 计算前强制转为浮点（FP32）。防止在 FP16/BF16 精度下，乘法运算导致精度损失或溢出。
+
+    # 2. 执行旋转矩阵乘法
+    # 原始公式：[y1, y2] = [cos, -sin; sin, cos] * [x1, x2]
+    # 展开后：
+    y1 = x1 * cos - x2 * sin
+    y2 = x2 * cos + x1 * sin
+
+    # 3. 拼接回原维度，并转回原始精度 (如 float16)
+    return torch.cat((y1, y2), dim=-1).to(x.dtype)
+```
+
+2. 位置编码管理类 `RotaryEmbedding`
+
+- 对 head 所有维度旋转
+- 频率计算，$\theta_i=base^{\frac{-2i}{d}}$，i 从 1 到 `rotary_dim/2`
+- 预计算缓存 `cos_sin_cache`。计算所有可能位置（0 到 `max_position_embeddings`）的 cos/sin。`register_buffer(..., persistent=False)` 将缓存注册为 Buffer，这样它会自动跟随模型移动到 GPU/CPU。
+`persistent=False` 表示这个缓冲不会被保存到模型的 `state_dict` 中。因为它是可以通过参数重新计算的，保存它会浪费磁盘空间。
+
+```py
+def __init__(
+    self,
+    head_size: int,
+    rotary_dim: int,
+    max_position_embeddings: int,
+    base: float,
+) -> None:
+    super().__init__()
+    self.head_size = head_size
+    assert rotary_dim == head_size  # 关键点 1
+    inv_freq = 1.0 / (base**(torch.arange(0, rotary_dim, 2, dtype=torch.float) / rotary_dim))
+    t = torch.arange(max_position_embeddings, dtype=torch.float)
+    freqs = torch.einsum("i,j -> ij", t, inv_freq)
+    cos = freqs.cos()
+    sin = freqs.sin()
+    cache = torch.cat((cos, sin), dim=-1).unsqueeze_(1) # 关键点 2
+    self.register_buffer("cos_sin_cache", cache, persistent=False) # 关键点 3
+```
+
+`forward` 函数：
+
+- 通过 token 的实际位置，直接从预计算的达标取 cos/sin 值
+- `@torch.compile` 是 pytorch 特性，会将这个函数编译乘优化的 CUDA kernel 或 CPU 代码。可以提升推理速度
+
+`get_rope` 函数：
+
+- 创建一个 `RotaryEmbedding` 实例
+- `@lru_cache(1)`，python 装饰器，实现单例模式。如果多个地方请求相同配置的 RoPE，不会重复创建，而是复用缓存的实例
+- `rope_scaling`，现在版本不支持位置插值（linear/YARN 等），仅支持标准 RoPE
