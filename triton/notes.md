@@ -33,3 +33,67 @@ triton 编译器：
 debug ops，调试使用的函数，不能用 python 的 `print()`
 
 ![alt text](img/image-3.png)
+
+## 例子
+
+以 safe softmax 的 kernel+wrapper 为例：
+
+```py
+import torch
+import triton
+import triton.language as tl
+
+@triton.jit
+def _softmax_kernel(
+    output_ptr, input_ptr,
+    input_row_stride, output_row_stride,
+    n_cols,
+    BLOCK_SIZE: tl.constexpr    # trion kernel 的编译期参数，不是 runtime 参数。其他的 BLOCK_M、BLOCK_N、BLOCK_Ks 等也是这类参数
+):
+    row_idx = tl.program_id(0)  # axis=0 是当前 program 在 x 轴的 id
+
+    row_start_ptr = input_ptr + row_idx * input_row_stride
+    col_offsets = tl.arange(0, BLOCK_SIZE)  # 一次生成这行要访问的所有 col offset。比如 BLOCK_SIZE=1024，那这个 program 会一次处理 1024 个列元素
+    input_ptrs = row_start_ptr + col_offsets
+
+    row = tl.load(input_ptrs, mask=col_offsets < n_cols, other=-float("inf"))   # mask 防止越界访问，因为后面要算最大值，所以 mask val 是 - inf
+
+    # safe softmax 部分
+    row_minus_max = row - tl.max(row, axis=0)
+    numerator = tl.exp(row_minus_max)
+    denominator = tl.sum(numerator, axis=0)
+    softmax_output = numerator / denominator
+
+    output_row_start_ptr = output_ptr + row_idx * output_row_stride
+    output_ptrs = output_row_start_ptr + col_offsets
+    tl.store(output_ptrs, softmax_output, mask=col_offsets < n_cols)    # 写回时还要再 mask 一次
+
+
+def triton_softmax(x: torch.Tensor) -> torch.Tensor:
+    assert x.dim() == 2, "only support 2D tensor for now"
+    assert x.is_cuda, "input must be on CUDA device"
+    rows, cols = x.shape
+    block_size = triton.next_power_of_2(cols)
+
+    if block_size <= 1024:
+        num_warps = 4
+    elif block_size <= 2048:
+        num_warps = 8
+    else:
+        num_warps = 16
+
+    grid = (rows,)
+    softmax_out = torch.empty_like(x)
+    _softmax_kernel[grid](
+        softmax_out, x,
+        x.stride(0), softmax_out.stride(0),
+        cols,
+        BLOCK_SIZE=block_size,
+        num_warps=num_warps,
+    )
+    return softmax_out
+
+sample = torch.tensor([[1,2,3,4,5],[5,4,3,2,1]], dtype=torch.float32, device="cuda")
+ts_out = triton_softmax(sample)
+print(f"{ts_out=}")
+```
