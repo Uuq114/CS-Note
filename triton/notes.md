@@ -97,3 +97,80 @@ sample = torch.tensor([[1,2,3,4,5],[5,4,3,2,1]], dtype=torch.float32, device="cu
 ts_out = triton_softmax(sample)
 print(f"{ts_out=}")
 ```
+
+以 online softmax 的 kernel+wrapper 为例：
+
+```py
+@triton.jit
+def _online_softmax_kernel(
+    output_ptr, input_ptr,
+    input_row_stride, output_row_stride,
+    n_cols,
+    BLOCK_SIZE: tl.constexpr
+):
+    row_index = tl.program_id(0)
+    row_start_ptr = input_ptr + row_index * input_row_stride
+
+    old_max, exp_sum = float('-inf'), 0.0
+
+    for start in range(0, n_cols, BLOCK_SIZE):
+        col_offsets = start + tl.arange(0, BLOCK_SIZE)
+        input_ptrs = row_start_ptr + col_offsets
+        row = tl.load(input_ptrs, mask=col_offsets<n_cols, other=float('-inf'))
+
+        new_max = tl.maximum(tl.max(row, axis=0), old_max)
+        rescale = tl.exp(old_max - new_max)
+        old_max = tl.maximum(old_max, new_max)
+        exp_sum = exp_sum * rescale + tl.sum(tl.exp(row-old_max), axis=0)
+
+    for start in range(0, n_cols, BLOCK_SIZE):
+        col_offsets = start + tl.arange(0, BLOCK_SIZE)
+        input_ptrs = row_start_ptr + col_offsets
+        row = tl.load(input_ptrs, mask=col_offsets<n_cols, other=float('-inf'))
+
+        up = tl.exp(row-old_max)
+        softmax_output = up / exp_sum
+
+        output_start_ptr = output_ptr + row_index * output_row_stride
+        output_ptrs = output_start_ptr + col_offsets
+        tl.store(output_ptrs, softmax_output, mask=col_offsets<n_cols)
+
+
+def online_softmax(x: torch.Tensor) -> torch.Tensor:
+    assert x.dim() == 2, "only support 2D tensor for now"
+    assert x.is_cuda, "input must be on CUDA device"
+    rows, cols = x.shape
+    block_size = triton.next_power_of_2(cols)
+
+    if block_size <= 1024:
+        num_warps = 4
+    elif block_size <= 2048:
+        num_warps = 8
+    else:
+        num_warps = 16
+
+    grid = (rows,)
+    softmax_out = torch.empty_like(x)
+    _online_softmax_kernel[grid](
+        softmax_out, x,
+        x.stride(0), softmax_out.stride(0),
+        cols,
+        BLOCK_SIZE=block_size,
+        num_warps=num_warps,
+    )
+    return softmax_out
+
+sample = torch.tensor([[1,2,3,4,5],[5,4,3,2,1]], dtype=torch.float32, device="cuda")
+os_out = online_softmax(sample)
+print(f"{os_out=}")
+```
+
+顺便比较了下 pytorch 的 softmax 和 triton 版本的 online softmax 性能😄
+
+```text
+input_shape: (32768, 32768)
+max error: tensor(4.1723e-07, device='cuda:0')
+
+torch_softmax: 11.854 ms
+online_softmax: 6.542 ms
+```
