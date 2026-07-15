@@ -2,7 +2,7 @@
 
 Course Schedule: https://cmu-llms.org/schedule/
 
-课程内容：
+2025 fall 课程内容：
 
 - 常见的 LLM，及适用场景
 - 实现、训练一个自然语言模型
@@ -10,8 +10,8 @@ Course Schedule: https://cmu-llms.org/schedule/
 - LLM 与下游应用结合
 - 预训练对下游任务的影响
 - LLM 常用术语：alignment、scaling law、RLHF、prompt engineering、instruction tuning
-- LLM前沿paper
-- 利用现有LLM的更多方法
+- LLM 前沿 paper
+- 利用现有 LLM 的更多方法
 
 ## Lecture
 
