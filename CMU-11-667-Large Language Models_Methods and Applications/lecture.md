@@ -246,7 +246,6 @@ Transformer 是注意力实现的 encoder-decoder 架构模型，另外还有 en
 
 ![alt text](img/image-25.png)
 
-
 **Tokenization**
 
 raw clean text ====tokenization===> tokens ====batching====> tensor
@@ -746,8 +745,25 @@ instruction tuning 训练数据例子：
 
 ## Reasoning
 
-从机器翻译到 LLM 的相关工作，可以总结几点：
+连续 word space 的涌现能力：word2vec embedding 之间有趣的性质，如 `v(king)+v(man)-v(woman)=v(queen)`
 
-- seq2seq 的抽象是很有效的（语音转文字、文本总结、图生文、基于图片和文本问答）
-- Transformer attention 可以有效识别 “模式”
+1. Transformer 机器翻译在特定、受限的评估场景中，平均质量已经接近人类甚至专业译者；但在完整文档、上下文消歧和专业领域中仍会出现严重错误，因此高平均分不等于真正完成了翻译任务。
 
+2. 从机器翻译到 LLM，Transformer 的 attention 和 seq2seq 思想展示了强大的模式学习能力。互联网规模的数据又让语言模型表现出翻译、摘要、问答和数学等能力，但这些表现可能来自对训练数据模式的复用，不能直接证明理解和推理。
+
+3. 很多看似“涌现能力”或“学到了语言知识”的结论可能来自评估缺陷，例如测试集泄漏、数据规模和模型容量不一致、测试集过于规则化、缺少随机或简单 baseline，以及对实验增益原因的错误解释。
+
+4. 训练、评估和使用 LLM 时，应确保测试数据真正未见，检查近重复和污染，使用简单 baseline、输入扰动和无信息对照，并始终质疑模型是否只是“以错误的理由得到了正确答案”。同时还要区分模型参数本身与微调、人工标注、工程维护共同构成的产品生态。
+
+## Agent-Human Interaction
+
+LLM agent 两种构建视角：
+
+- LLM thinking。先有 LLM，再连接工具/记忆。（现在的 codex/cc 属于这种？LLM 基础能力已经很强，可以驱动一个行动-观察-反馈的循环，外层框架提供确定性工具、反馈和约束）
+- Agent thinking。先定义能在环境中行动的 agent，LLM 作为能力模块
+
+当前 agent 的主要短板：
+
+- 不在简单的工具调用，而在 social intelligence，即理解他人新年、协调行动、遵守规范、处理信息不对称
+
+## In-Context Learning
