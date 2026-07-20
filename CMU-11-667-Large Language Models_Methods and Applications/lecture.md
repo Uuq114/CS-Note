@@ -767,3 +767,16 @@ LLM agent 两种构建视角：
 - 不在简单的工具调用，而在 social intelligence，即理解他人新年、协调行动、遵守规范、处理信息不对称
 
 ## In-Context Learning
+
+in-context learning（上下文学习）：
+不修改模型参数，只在 prompt 中提供任务说明和示例，让模型根据当前上下文临时学会如何完成任务。zero-shot 只给任务说明不给示例；few-shot 少量示例；many-shot 大量示例
+
+1. ICL 允许模型在不修改参数的情况下，通过 prompt 和 demonstrations 完成新任务，但它并不是稳定可靠的“上下文内训练”。
+2. ICL 的效果高度依赖 prompt 的语言熟悉度、perplexity、格式、示例顺序、标签分布和位置。
+3. Few-shot 示例可能主要在描述任务格式和唤起预训练知识，而不是向模型传授全新的 input-output 规律。many-shot ICL 在长上下文和更强模型上可以持续提升性能，并克服部分预训练偏置。
+4. Calibration、CoT（few-shot 示例不仅给答案，而且展示逐步求解过程；zero-shot 让模型逐步思考）、instruction tuning 和任务分解都能改善 ICL，但没有一种方法能完全消除 prompt 敏感性。
+5. Benchmark 分数是“模型 + prompt + exemplar + scoring protocol”的共同结果；评估设置不同，模型排名也可能改变。
+6. Instruction-tuned chatbot 可以看作 multi-task learning、对话训练、人类反馈和工具使用逐渐融合的产物，而不是单靠 next-token pretraining 自然形成。例如，LaMDA 的训练过程包含：next-token predicting -> 人类和模型对话，评价回答 -> 训练给回答打分的模型 -> 筛选优质回答微调 LaMDA -> 使用包含“来自网络的事实依据”的人工修改对话训练模型，让模型学会“在不确定或需要核实事实依据时，调用搜索工具、生成搜索关键词、根据返回组织答案”，而非凭空生成
+
+总结：
+全篇最核心的观点是：ICL 很强，但工作方式经常出人意料。使用和评估 ICL 时，不能只关注模型本身，还必须把 prompt、上下文示例和评估协议视为系统的一部分。
