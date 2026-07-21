@@ -16,6 +16,11 @@ The repository is organized by course/topic directories:
 
 ## Working with This Repository
 
+### Summary and Analysis Output Policy
+- By default, return generated summaries, analyses, reviews, and explanations only in the chat.
+- Never write this content into local Markdown notes or any other files unless the user explicitly asks to modify a specific file.
+- Requests such as "summarize", "write a summary", "review", or "analyze" do not authorize file edits.
+
 ### File Organization
 - All notes are markdown files (.md) organized by topic/course
 - Images are stored in `img/` subdirectories within each topic folder

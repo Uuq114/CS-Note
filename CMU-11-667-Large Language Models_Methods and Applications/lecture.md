@@ -11,6 +11,9 @@
   - [Automatic Evaluation of LLMs](#automatic-evaluation-of-llms)
   - [Customizing LLMs via full model finetuning](#customizing-llms-via-full-model-finetuning)
   - [Reasoning](#reasoning)
+  - [Agent-Human Interaction](#agent-human-interaction)
+  - [In-Context Learning](#in-context-learning)
+  - [Tool Use in LLMs](#tool-use-in-llms)
 
 <!-- /TOC -->
 
@@ -751,15 +754,15 @@ instruction tuning 训练数据例子：
 
 2. 从机器翻译到 LLM，Transformer 的 attention 和 seq2seq 思想展示了强大的模式学习能力。互联网规模的数据又让语言模型表现出翻译、摘要、问答和数学等能力，但这些表现可能来自对训练数据模式的复用，不能直接证明理解和推理。
 
-3. 很多看似“涌现能力”或“学到了语言知识”的结论可能来自评估缺陷，例如测试集泄漏、数据规模和模型容量不一致、测试集过于规则化、缺少随机或简单 baseline，以及对实验增益原因的错误解释。
+3. 很多看似 “涌现能力” 或 “学到了语言知识” 的结论可能来自评估缺陷，例如测试集泄漏、数据规模和模型容量不一致、测试集过于规则化、缺少随机或简单 baseline，以及对实验增益原因的错误解释。
 
-4. 训练、评估和使用 LLM 时，应确保测试数据真正未见，检查近重复和污染，使用简单 baseline、输入扰动和无信息对照，并始终质疑模型是否只是“以错误的理由得到了正确答案”。同时还要区分模型参数本身与微调、人工标注、工程维护共同构成的产品生态。
+4. 训练、评估和使用 LLM 时，应确保测试数据真正未见，检查近重复和污染，使用简单 baseline、输入扰动和无信息对照，并始终质疑模型是否只是 “以错误的理由得到了正确答案”。同时还要区分模型参数本身与微调、人工标注、工程维护共同构成的产品生态。
 
 ## Agent-Human Interaction
 
 LLM agent 两种构建视角：
 
-- LLM thinking。先有 LLM，再连接工具/记忆。（现在的 codex/cc 属于这种？LLM 基础能力已经很强，可以驱动一个行动-观察-反馈的循环，外层框架提供确定性工具、反馈和约束）
+- LLM thinking。先有 LLM，再连接工具 / 记忆。（现在的 codex/cc 属于这种？LLM 基础能力已经很强，可以驱动一个行动 - 观察 - 反馈的循环，外层框架提供确定性工具、反馈和约束）
 - Agent thinking。先定义能在环境中行动的 agent，LLM 作为能力模块
 
 当前 agent 的主要短板：
@@ -771,12 +774,22 @@ LLM agent 两种构建视角：
 in-context learning（上下文学习）：
 不修改模型参数，只在 prompt 中提供任务说明和示例，让模型根据当前上下文临时学会如何完成任务。zero-shot 只给任务说明不给示例；few-shot 少量示例；many-shot 大量示例
 
-1. ICL 允许模型在不修改参数的情况下，通过 prompt 和 demonstrations 完成新任务，但它并不是稳定可靠的“上下文内训练”。
+1. ICL 允许模型在不修改参数的情况下，通过 prompt 和 demonstrations 完成新任务，但它并不是稳定可靠的 “上下文内训练”。
 2. ICL 的效果高度依赖 prompt 的语言熟悉度、perplexity、格式、示例顺序、标签分布和位置。
 3. Few-shot 示例可能主要在描述任务格式和唤起预训练知识，而不是向模型传授全新的 input-output 规律。many-shot ICL 在长上下文和更强模型上可以持续提升性能，并克服部分预训练偏置。
 4. Calibration、CoT（few-shot 示例不仅给答案，而且展示逐步求解过程；zero-shot 让模型逐步思考）、instruction tuning 和任务分解都能改善 ICL，但没有一种方法能完全消除 prompt 敏感性。
-5. Benchmark 分数是“模型 + prompt + exemplar + scoring protocol”的共同结果；评估设置不同，模型排名也可能改变。
-6. Instruction-tuned chatbot 可以看作 multi-task learning、对话训练、人类反馈和工具使用逐渐融合的产物，而不是单靠 next-token pretraining 自然形成。例如，LaMDA 的训练过程包含：next-token predicting -> 人类和模型对话，评价回答 -> 训练给回答打分的模型 -> 筛选优质回答微调 LaMDA -> 使用包含“来自网络的事实依据”的人工修改对话训练模型，让模型学会“在不确定或需要核实事实依据时，调用搜索工具、生成搜索关键词、根据返回组织答案”，而非凭空生成
+5. Benchmark 分数是 “模型 + prompt + exemplar + scoring protocol” 的共同结果；评估设置不同，模型排名也可能改变。
+6. Instruction-tuned chatbot 可以看作 multi-task learning、对话训练、人类反馈和工具使用逐渐融合的产物，而不是单靠 next-token pretraining 自然形成。例如，LaMDA 的训练过程包含：next-token predicting -> 人类和模型对话，评价回答 -> 训练给回答打分的模型 -> 筛选优质回答微调 LaMDA -> 使用包含 “来自网络的事实依据” 的人工修改对话训练模型，让模型学会 “在不确定或需要核实事实依据时，调用搜索工具、生成搜索关键词、根据返回组织答案”，而非凭空生成
 
 总结：
 全篇最核心的观点是：ICL 很强，但工作方式经常出人意料。使用和评估 ICL 时，不能只关注模型本身，还必须把 prompt、上下文示例和评估协议视为系统的一部分。
+
+## Tool Use in LLMs
+
+why tools：
+
+工具：模型外部的工具程序。常见工具如：获取外部知识、计算（计算器、调用 python、操作 excel）
+
+使用工具的阶段：规划子问题、选择工具、调用工具、生成回答
+
+让模型学会工具的两种方法：一次性规划 subtask；根据工具返回动态迭代 subtask

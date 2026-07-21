@@ -1,4 +1,4 @@
-# CMU 11-617: Large Language Models: Methods and Applications
+# CMU 11-667: Large Language Models: Methods and Applications
 
 Course Schedule: https://cmu-llms.org/schedule/
 
@@ -15,9 +15,18 @@ Course Schedule: https://cmu-llms.org/schedule/
 
 ## Lecture
 
-- Language Models Basics
-- Neural Language Models Architecture
+- [x] Language Models Basics
+- [x] Neural Language Model Architectures
+- [x] Pre-training Data Curation and Tokenization
+- [x] Side Story: Transformer
+- [x] Architecture Advancements on Transformers
+- [x] Automatic Evaluation of LLMs
+- [x] Customizing LLMs via Full Model Finetuning
+- [x] Reasoning
+- [x] Agent-Human Interaction
+- [x] In-Context Learning
 
 ## Lab
 
-- [ ] Pre-Trainging Data
+- [x] Assignment 1 - Preparing and Exploring Pre-Training Data
+- [ ] Assignment 2 - Transformer（进行中：已记录至 Q1.4，下一项 Q2.1）
