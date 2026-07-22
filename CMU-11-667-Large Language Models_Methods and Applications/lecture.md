@@ -14,6 +14,7 @@
   - [Agent-Human Interaction](#agent-human-interaction)
   - [In-Context Learning](#in-context-learning)
   - [Tool Use in LLMs](#tool-use-in-llms)
+  - [RAG](#rag)
 
 <!-- /TOC -->
 
@@ -786,10 +787,43 @@ in-context learning（上下文学习）：
 
 ## Tool Use in LLMs
 
-why tools：
+why tools：LLM 不擅长精确计算、符号操作、训练数据外的知识、外部世界交互。搜索、数据库、Python、计算器和自动化工具可以补足这些能力。
 
-工具：模型外部的工具程序。常见工具如：获取外部知识、计算（计算器、调用 python、操作 excel）
+工具：工具是模型外部的程序接口，由 LLM 生成函数调用和参数。工具包括知识访问、计算、现实世界交互、非文本模态和专用模型。
 
-使用工具的阶段：规划子问题、选择工具、调用工具、生成回答
+工具使用流程：
 
-让模型学会工具的两种方法：一次性规划 subtask；根据工具返回动态迭代 subtask
+- 任务规划、工具选择、工具调用、回答生成。求解可以预先确定全部步骤，也可以根据工具返回迭代调整。
+- 工具较多时先用 BM25、TF-IDF 或 dense retrieval 召回候选，再让 LLM 选择；工具较少时可以直接让 LLM 选择
+
+让 LLM 学会调用工具、正确填参数：
+
+- ICL+few shot。每次推理需要输入工具描述 + 几个例子，先在上下文里面挑工具再填参数。可能有格式不稳定的问题
+- finetuning+toolken。将工具调用流程用特殊 token 显式稳定内化到模型。模型一旦预测出一个特殊 token（toolken），就切换到一种专门的生成模式去产出参数；工具返回后，再用另一个信号切回正常文本生成，把结果接回去。
+
+![alt text](img/image-68.png)
+
+Toolformer：自监督构造工具调用数据集，用于微调模型学会工具调用。通过检测工具调用后，模型预测原文后续是否变容易了，如果便容易说明工具调用有用。
+
+- Sample API calls。根据普通文本，让模型自问生成候选 query
+- Execute API calls。把 query 发送到工具，获得结果
+- Filter API Calls。用损失比较，判断这次工具调用是否有作用。例如下图中 “问别称” 工具调用的损失低于 “无信息基准” 的损失，说明工具调用有用。而 “问国家” 的损失更高，说明这个调用是无效的。
+- 输出。将通过筛选的调用插回原文
+
+![alt text](img/image-69.png)
+
+HuggingGPT：在系统层面实现 “任务规划和专家模型编排”，通过 prompt、结构化任务图和外部执行框架，先把复杂请求拆成多个存在依赖关系的任务，再为每个任务选择 Hugging Face 上的专家模型，执行任务，最后汇总结果。
+
+工具使用评测：
+分别评测规划、工具选择、参数调用和回答生成。指标包括 recall、NDCG@K、参数完整性与格式，以及 BLEU、ROUGE、exact match、F1。
+
+当前挑战：
+
+- 高延迟。
+- 评测标准模糊。证明 LLM 能有效使用工具的量化指标不足
+- 现有数据集包含工具类型有限
+- 真实环境中的噪声与安全问题
+- 大部分 benchmark 是 LLM 生成的，缺少真实用户 benchmark
+- 大部分工具集中在文本查询，多模态覆盖不足
+
+## RAG
