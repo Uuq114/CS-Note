@@ -14,7 +14,7 @@
   - [Agent-Human Interaction](#agent-human-interaction)
   - [In-Context Learning](#in-context-learning)
   - [Tool Use in LLMs](#tool-use-in-llms)
-  - [RAG](#rag)
+  - [Retrieval-Augmented Generation (RAG)](#retrieval-augmented-generation-rag)
 
 <!-- /TOC -->
 
@@ -826,4 +826,4 @@ HuggingGPT：在系统层面实现 “任务规划和专家模型编排”，通
 - 大部分 benchmark 是 LLM 生成的，缺少真实用户 benchmark
 - 大部分工具集中在文本查询，多模态覆盖不足
 
-## RAG
+## Retrieval-Augmented Generation (RAG)
