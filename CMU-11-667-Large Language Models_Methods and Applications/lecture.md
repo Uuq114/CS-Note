@@ -15,6 +15,7 @@
   - [In-Context Learning](#in-context-learning)
   - [Tool Use in LLMs](#tool-use-in-llms)
   - [Retrieval-Augmented Generation (RAG)](#retrieval-augmented-generation-rag)
+  - [Scaling Law](#scaling-law)
 
 <!-- /TOC -->
 
@@ -827,3 +828,18 @@ HuggingGPT：在系统层面实现 “任务规划和专家模型编排”，通
 - 大部分工具集中在文本查询，多模态覆盖不足
 
 ## Retrieval-Augmented Generation (RAG)
+
+- **参数记忆局限：** 参数化语言模型把知识存在参数中，但这些知识是静态的，在长尾事实、最新信息和事实准确性方面容易失效。
+- **RAG 核心价值：** RAG 将一部分记忆外置到 datastore，在推理时检索证据，能够减少幻觉、更新知识并提高答案的可验证性。
+- **完整系统视角：** RAG 是一个完整系统，不只是“在 prompt 前面加几段文档”。数据来源、清洗、chunking、检索器、reranker 和生成模型都会影响结果。
+- **检索方法取舍：** Sparse retrieval 擅长精确的关键词匹配；dense retrieval 更能理解语义；cross-encoder reranking 可进一步提高精度，但计算成本也更高。
+- **检索训练评测：** Dense retriever 的关键在于对比学习和负例设计。检索效果还必须考虑域外泛化，不能只看单一 benchmark。
+- **简单 RAG 局限：** 简单 RAG 对长尾知识有效，但“检索了文档”不等于“答案受文档支持”；无关证据、错误证据和额外上下文都可能降低效果。
+- **自适应检索：** Self-RAG 把检索变成模型能够自主决定和评价的行为，使系统具备按需检索、自我检查和证据判断能力。
+- **多轮深度研究：** Deep Research 进一步将检索扩展为多轮任务：模型在推理过程中交替进行规划、搜索、阅读和综合。
+- **多层检索融合：** 检索信息不仅能放入输入，也能在模型中间层或输出概率中融合。RAG、RETRO 和 kNN-LM 分别代表这三类思路。
+- **总体演进趋势：** LLM 正从依靠静态参数记忆的单一模型，发展为能够访问外部知识、动态检索证据并自主编排搜索过程的复合系统。
+
+## Scaling Law
+
+xxx
