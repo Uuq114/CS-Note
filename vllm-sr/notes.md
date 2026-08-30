@@ -2,6 +2,16 @@
 
 [vllm-semantic-router](https://github.com/vllm-project/semantic-router) 是一个 LLM 多模型路由平台。解决的问题是：如何根据能力、成本、隐私、安全和场景语义，将请求路由到合适的模型或模型组合上
 
+- signal = 原始判断
+- projection score = 多个 signal 合成的路由分数
+- projection label = score 过阈值后得到的中间标签
+- decision = signal/projection label 的 AND/OR 布尔组合
+- model selection = decision 命中后，从该 decision 的候选模型里选
+
+
+
+## 架构
+
 运行时架构
 
 ```mermaid

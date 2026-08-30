@@ -105,5 +105,37 @@ Q2.2
 logits = hidden_state @ embedding.T
 ```
 
-Q2.3
+Q2.3-Q3.1
 
+完成
+
+Q3.2
+
+余弦退火：让学习率按照余弦曲线，从较大的初始值平滑下降到较小值
+
+训练初期学习率较大，模型可以快速搜索参数空间；接近训练结束时，学习率逐渐减小，帮助模型在较优解附近进行细致调整。
+
+$$
+
+\eta_t=\eta_{\min}+\frac{1}{2}(\eta_{\max}-\eta_{\min})
+\left(1+\cos\frac{\pi t}{T}\right)
+
+$$
+
+Q3.3
+
+validation loss = 7.08407
+
+![alt text](img/image-70.png)
+
+Q3.4
+
+使用 wandb sweep 来扫描超参数组合
+
+- 在 Sweep 文件中指定搜索参数、搜索方法和评价指标。
+- `grid` 穷举组合，`random` 随机搜索，`bayes` 根据已有结果选择更有潜力的组合。
+- 训练代码通过 `wandb.config` 获取参数，并在创建模型、优化器之前覆盖原配置。
+- 记录的验证指标名称必须与 Sweep 中完全一致。
+- 用 `wandb sweep` 创建任务，用 `wandb agent --count N` 指定实验次数。
+- 确保每组配置满足结构、显存和 FLOPs 限制，并使用独立输出目录避免模型互相覆盖。
+- Sweep 完成后选择验证集指标最优的配置，再单独进行正式训练。
