@@ -87,8 +87,23 @@ document length in English 119
 document length in Thai 636
 ```
 
-不同的分词器是基于特定语言的训练数据学到的，当文本语言和分词器“母语”不匹配时，压缩效率会下降
+不同的分词器是基于特定语言的训练数据学到的，当文本语言和分词器 “母语” 不匹配时，压缩效率会下降
 
-B. low-resource语言的语料有限，分词效率低。会导致token数量膨胀、推理成本上升、语义理解难度增加
+B. low-resource 语言的语料有限，分词效率低。会导致 token 数量膨胀、推理成本上升、语义理解难度增加
 
 Q2.1
+
+解释 weight tying 的作用：
+
+- weight tying 是指，输入 embedding 矩阵、输出 projection 矩阵共用同一组参数
+- 让输入 / 输出语义空间保持一致。embedding 表示 “一个词进入模型时的语义向量”，输出 projection “模型判断下一个词时，每个候选词对应的向量”，同一个词在输入端和输出端是一致的，这在直觉上是合理的
+- 让训练更稳定，因为参数共享减少了需要学习的独立参数，降低了优化难度
+
+Q2.2
+
+```py
+logits = hidden_state @ embedding.T
+```
+
+Q2.3
+
