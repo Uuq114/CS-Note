@@ -139,3 +139,35 @@ Q3.4
 - 用 `wandb sweep` 创建任务，用 `wandb agent --count N` 指定实验次数。
 - 确保每组配置满足结构、显存和 FLOPs 限制，并使用独立输出目录避免模型互相覆盖。
 - Sweep 完成后选择验证集指标最优的配置，再单独进行正式训练。
+
+sweep得到的最佳超参数组合：
+
+```
+output_dir: outputs/GPT-best
+tokenizer_encoding: gpt2
+model_config:
+  n_embd: 96
+  n_head: 2
+  n_positions: 128
+  n_layer: 6
+device: auto
+batch_size: 64
+seq_len: 128
+num_warmup_steps: 100
+num_training_steps: 2000
+grad_accumulation_steps: 1
+min_lr: 1e-4
+max_lr: 0.001557416742188994
+```
+
+Q3.5
+
+用于训练完整模型的设置：`num_training_steps: 350000`。完整模型训练结果：
+
+```
+val loss = xxx
+PPL = xxx
+```
+
+Q4.1
+
