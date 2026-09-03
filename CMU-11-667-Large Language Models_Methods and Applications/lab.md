@@ -107,7 +107,7 @@ logits = hidden_state @ embedding.T
 
 Q2.3-Q3.1
 
-完成
+[完成](https://github.com/Uuq114/11-667-Lab)
 
 Q3.2
 
@@ -170,4 +170,6 @@ PPL = xxx
 ```
 
 Q4.1
+
+[完成](https://github.com/Uuq114/11-667-Lab)
 
