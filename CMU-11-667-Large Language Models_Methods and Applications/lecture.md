@@ -942,3 +942,6 @@ ZeRO (Zero Redundancy) optimizer，零冗余优化器，LLM 训练中使用的�
 - 小规模试验中的 work 的经验设置不一定能 scale
 - 硬件故障导致训练中断
 - 优化稳定性。loss 爆炸、梯度溢出
+
+## Interpretation of Pretrained Language Models
+
