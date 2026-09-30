@@ -17,6 +17,8 @@
   - [Retrieval-Augmented Generation (RAG)](#retrieval-augmented-generation-rag)
   - [Scaling Law](#scaling-law)
   - [Scaling Up LLM Pretraining: Parallel Training](#scaling-up-llm-pretraining-parallel-training)
+  - [Interpretation of Pretrained Language Models](#interpretation-of-pretrained-language-models)
+  - [Memorization](#memorization)
 
 <!-- /TOC -->
 
@@ -958,3 +960,7 @@ ZeRO (Zero Redundancy) optimizer，零冗余优化器，LLM 训练中使用的�
 - 关注特殊符号：部分头集中关注 `[SEP]` 或句号
 
 预训练带来的收益，除了降低训练损失，还包括找到更利于泛化的参数区域。（即使预训练损失已经基本不变，继续训练仍可能改善下游表现）
+
+## Memorization
+
+xx
